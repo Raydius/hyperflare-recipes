@@ -91,6 +91,7 @@ class PreparedPackedSpeculativeRound:
         admitted = admitted & (~submitted | (agreement[0, :batch] == self.world)).all()
         o.inputs.query_lengths[:batch].copy_(torch.where(admitted, o.inputs.query_lengths[:batch], 0))
         pad = t.width - s.width
+        # The proposal carries its copy mask; the target commit bounds it against the allocated lengths.
         tile_masses = (None if proposal.tile_masses is None
                        else (proposal.tile_masses if pad == 0
                              else torch.nn.functional.pad(proposal.tile_masses, (0, 0, 0, pad))))
