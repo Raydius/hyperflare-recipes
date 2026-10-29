@@ -330,6 +330,9 @@ def prepare_rank(snapshot, config, *, rank, group, progress=None, core_storage):
             sequence=sequence, session=session, workspace=arena, coordinator=coordinator,
             runtime=collective, vocabulary_runtime=vocabulary_collective, result_runtime=result_collective,
             examples=examples)
+        from hyperflare_recipes.components.parallel_draft import allocate_copy_buffers
+        speculation.copy_buffers = allocate_copy_buffers(requests.capacity, device)
+        buffers.update(speculation.copy_buffers)
     modes = (drafting,) if config.benchmark_selection is not None else serving_modes(drafting, config.mtp_only)
     count = (len(modes) * (prefill_graph_count(prefill_sizes, scoring) + 4 * len(batch_sizes))
              + (len(batch_sizes) if False in modes else 0) + len(config.speculative_round_shapes) + len(patches))
@@ -385,7 +388,8 @@ def prepare_rank(snapshot, config, *, rank, group, progress=None, core_storage):
                 forward = PreparedParallelDraftRound(speculation, batch, width, name,
                     target_token_capacity=packed)
                 forward.prepare()
-                add(name, forward, "speculative", batch, width, (*inputs.buffers(), "sampling_grammar_mask"),
+                add(name, forward, "speculative", batch, width,
+                    (*inputs.buffers(), "sampling_grammar_mask", *speculation.copy_buffers),
                     enabled=True, packed_tokens=packed)
         row_inputs = ("request_state_rows", "row_slot_ids", "row_generations", "live_rows")
         for enabled in modes:

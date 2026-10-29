@@ -94,6 +94,7 @@ class PreparedPackedSpeculativeRound:
         tile_masses = (None if proposal.tile_masses is None
                        else (proposal.tile_masses if pad == 0
                              else torch.nn.functional.pad(proposal.tile_masses, (0, 0, 0, pad))))
+        # The proposal carries its copy mask; the target commit bounds it against the allocated lengths.
         proposal = replace(proposal, active=proposal.active & admitted,
             candidates=torch.nn.functional.pad(proposal.candidates, (0, pad)),
             drafts=torch.nn.functional.pad(proposal.drafts, (0, pad)),
