@@ -10,7 +10,7 @@ import pytest
 import torch
 
 from ignition.preparation import runtime_core_pb2 as proto
-from ignition.preparation.rebuild_manifest import rebuild_weights_metadata, validate_weights, weight_views
+from ignition.preparation.rebuild_manifest import declare_weights, declared_views, rebuild_weights_metadata, validate_weights, weight_views
 from helios.tests.signing import publisher
 from tests.preparation.test_core_snapshot import native, assert_native
 from tests.preparation import test_core_protection as fixtures
@@ -169,3 +169,21 @@ def test_rebuild_manifest_embeds_parseable_reproduction_arguments(tmp_path):
     multi_parsed = _parser().parse_args(multi_args[1:])
     assert multi_parsed.ranks == plan.world_size
     assert multi_parsed.roce_ring is True
+
+
+@dataclass
+class DraftRoot:
+    projection: torch.Tensor
+    layers: tuple
+
+
+def test_component_root_with_layers_is_declared_once():
+    """A root declared whole as one component is not re-walked by the layer pass (duplicate view names failed export)."""
+    layer = {'qkv': torch.zeros(4, 2), 'output': torch.zeros(2, 2)}
+    draft = DraftRoot(torch.zeros(2, 2), (layer, dict(layer)))
+    declaration = declare_weights({'draft': draft}, components={'draft': 'draft'},
+                                  layers=('layers', 'tree.model.language_model.layers'))
+    views = list(declared_views(declaration))
+    names = [name for name, *_ in views]
+    assert len(names) == len(set(names)) == 5
+    assert {group for *_, group, _ in views} == {'misc'}
