@@ -12,7 +12,7 @@ from hyperflare_recipes.components.embedding import PreparedShardedEmbedding
 from hyperflare_recipes.components.mlp import MLPScratch, PreparedMLP
 from hyperflare_recipes.components.vocabulary import PreparedVocabularyProjection
 from hyperflare_recipes.recipes.muse_spark.attention import AttentionScratch, PreparedAttention
-from hyperflare_recipes.recipes.muse_spark.decoder import SoftcappedProjection
+from hyperflare_recipes.recipes.muse_spark.decoder import PreparedResume, SoftcappedProjection
 from .model import decoder_layer, norm
 
 
@@ -130,12 +130,3 @@ class PreparedDecoder:
     def scratch_tensors(self):
         return (self.head.gathered, self.auxiliary, *(layer.self_attn.scratch_tensors() for layer in self.layers))
 
-
-from hyperflare_recipes.components.paged_resume import PreparedResume as _PreparedResume
-
-
-class PreparedResume(_PreparedResume):
-    def __init__(self, weights, *args, **kwargs):
-        super().__init__(weights, *args, **kwargs)
-        c = weights.config.text
-        self.projection = SoftcappedProjection(self.projection, c["output_multiplier"], c["final_logit_softcapping"])
