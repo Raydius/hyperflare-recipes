@@ -29,7 +29,7 @@ from pathlib import Path
 import torch
 
 from ignition.preparation.checkpoint import inspect_indexed_checkpoint
-from hyperflare_recipes.recipes.muse_glimmer.config import PREFIX, PROJECTIONS
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.config import PREFIX, PROJECTIONS
 from hyperflare_recipes.reference.muse_spark import CheckpointReader
 from hyperflare_recipes.reference.qwen38_quant import Nvfp4Projection, nvfp4_linear_reference
 
