@@ -12,11 +12,11 @@ from hyperflare_recipes.components.paged_batch import BatchInputs
 from hyperflare_recipes.components.parallel import TensorParallelShard
 from ignition.preparation import contract as c, runtime_package_pb2 as p
 from ignition.preparation.execution import GraphSignature
-from hyperflare_recipes.recipes.muse_glimmer.config import ModelConfig
-from hyperflare_recipes.recipes.muse_glimmer.contract import prepare
-from hyperflare_recipes.recipes.muse_glimmer.frontend import FRONTEND
-from hyperflare_recipes.recipes.muse_glimmer.vision import PATCH_CAPACITIES
-from hyperflare_recipes.recipes.muse_glimmer.vision_state import FEATURES, VisionInputs
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.config import ModelConfig
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.contract import prepare
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.frontend import FRONTEND
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.vision import PATCH_CAPACITIES
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.vision_state import FEATURES, VisionInputs
 from hyperflare_recipes.recipes.muse_spark.pool import ContinuationPool, page_bytes
 
 from .test_config import CONFIG
