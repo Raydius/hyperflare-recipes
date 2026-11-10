@@ -49,8 +49,8 @@ def fill(inputs, requests, state, tokens, generation, *, prompt_row):
 
 def prompt_row(function):
     """The logit row and sample-hidden row the prompt sampler of this graph reads."""
-    from ignition.recipes.qwen38.mixed_model import PreparedMixedRound
-    from ignition.recipes.qwen38_dflash.speculative_model import PreparedPrefillContext
+    from hyperflare_recipes.recipes.qwen38.mixed_model import PreparedMixedRound
+    from hyperflare_recipes.recipes.qwen38_dflash.speculative_model import PreparedPrefillContext
 
     if isinstance(function, PreparedMixedRound):
         scratch = function.decoder.scratch
@@ -66,8 +66,8 @@ def norms(tensor, count):
 
 def trace(function, pool, count):
     """Where the prompt's hidden row goes missing: packing masks, role metadata, and per-row norms."""
-    from ignition.recipes.qwen38.mixed_model import PreparedMixedRound
-    from ignition.recipes.qwen38_dflash.speculative_model import PreparedPrefillContext
+    from hyperflare_recipes.recipes.qwen38.mixed_model import PreparedMixedRound
+    from hyperflare_recipes.recipes.qwen38_dflash.speculative_model import PreparedPrefillContext
 
     out = {'last_hidden_row1_norm': pool.last_hidden[1].float().norm().item()}
     if isinstance(function, PreparedMixedRound):
@@ -98,12 +98,12 @@ def trace(function, pool, count):
 def run(args):
     from transformers import AutoTokenizer
 
-    from ignition.preparation.package_storage import PackageStorage
-    from ignition.recipes.qwen38.decoder_state import DecoderInputs
-    from ignition.recipes.qwen38.ple import PLETable
-    from ignition.recipes.qwen38.sampling import DeviceRequestState
-    from ignition.recipes.qwen38.state import HybridStatePool
-    from ignition.recipes.qwen38_dflash.bootstrap import PreparationConfig, prepare_model, state_layout
+    from ignition.preparation.core_storage import CoreStorage
+    from hyperflare_recipes.recipes.qwen38.decoder_state import DecoderInputs
+    from hyperflare_recipes.recipes.qwen38.ple import PLETable
+    from hyperflare_recipes.recipes.qwen38.sampling import DeviceRequestState
+    from hyperflare_recipes.recipes.qwen38.state import HybridStatePool
+    from hyperflare_recipes.recipes.qwen38_dflash.bootstrap import PreparationConfig, prepare_model, state_layout
 
     device()
     tokenizer = AutoTokenizer.from_pretrained(str(args.snapshot))
@@ -113,8 +113,8 @@ def run(args):
         snapshot_budget_bytes=state_layout(True).row_bytes, compile_workers=args.compile_workers,
         kernel_cache=args.kernel_cache)
     results, generation = {}, 0
-    with PackageStorage(world=1) as storage:
-        with prepare_model(args.snapshot, config, compile_decoder=not args.no_compile, package_storage=storage,
+    with CoreStorage(world=1) as storage:
+        with prepare_model(args.snapshot, config, compile_decoder=not args.no_compile, core_storage=storage,
                            progress=lambda message: print(message, flush=True)) as model:
             def owner(kind):
                 return next(value for value in model.resources if isinstance(value, kind))
