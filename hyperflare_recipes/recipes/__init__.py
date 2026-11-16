@@ -37,9 +37,10 @@ def recipes() -> tuple[Recipe, ...]:
     from .muse_spark.recipe import RECIPE as muse_spark
     from .inkling2.recipe import RECIPE as inkling2
     from .muse_glimmer_nvfp4.recipe import RECIPE as muse_glimmer_nvfp4
+    from .elephant1.recipe import RECIPE as elephant1
     from .inkling2.recipe import MINI_RECIPE as inkling2_mini
 
-    return qwen38, qwen38_dense, glm53, deepseek41, deepseek4, mimo_v2, kimi3, kimi31, step5, nemotron_h, minimax_m3, gemma4, muse_spark, inkling2_mini, inkling2, muse_glimmer_nvfp4
+    return qwen38, qwen38_dense, glm53, deepseek41, deepseek4, mimo_v2, kimi3, kimi31, step5, nemotron_h, minimax_m3, gemma4, muse_spark, inkling2_mini, inkling2, muse_glimmer_nvfp4, elephant1
 
 
 def aliases() -> tuple[str, ...]:
