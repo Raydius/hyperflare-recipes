@@ -182,8 +182,10 @@ class RecurrentAttention(torch.nn.Module):
         return self.operation(hidden_states, records=records, metadata=metadata)
 
 
-def _attention_query_dtype(source, metadata, mode, head_dim):
+def _attention_query_dtype(source, metadata, mode, head_dim, cache_dtype):
+    """FP8 queries feed the TMA prefill kernel, which reads an FP8 key/value cache; other caches take BF16."""
     if (mode == "prefill" and source.shape[0] >= 128 and head_dim == 256
+            and cache_dtype == torch.float8_e4m3fn
             and metadata.page_table.shape[0] == 1
             and torch.cuda.get_device_capability(source.device) in ((12, 0), (12, 1))):
         return torch.float8_e4m3fn
@@ -246,7 +248,8 @@ class FullAttention(torch.nn.Module):
                 inputs = (("k_proj", source, key), ("v_proj", source, value))
             if not self.cache_only:
                 inputs = (("q_proj", source, qg), *inputs)
-        query_dtype = _attention_query_dtype(source, metadata, mode, self.dim)
+        key_cache, value_cache = pool.attention(layer, config)
+        query_dtype = _attention_query_dtype(source, metadata, mode, self.dim, key_cache.dtype)
         self.query_dtype = query_dtype
         def projection(field, inputs, output):
             weight = weights.projections[prefix + field]
@@ -256,7 +259,6 @@ class FullAttention(torch.nn.Module):
             return prepare_projection(inputs, weight, output, session=session, name=name + "." + field,
                                       workspace=workspace).functional(session=session)
 
-        key_cache, value_cache = pool.attention(layer, config)
         if (key_cache.ndim != 4 or value_cache.shape != key_cache.shape
                 or value_cache.stride() != key_cache.stride()
                 or value_cache.dtype != key_cache.dtype
@@ -401,7 +403,9 @@ class PreparedDecoder:
         def zeros(shape, dtype=None):
             dtype = source.dtype if dtype is None else dtype
             return torch.zeros(shape, dtype=dtype, device=source.device)
-        query_dtype = _attention_query_dtype(source, metadata, mode, config.text["head_dim"])
+        cache_dtype = next((pool.attention(index, config)[0].dtype for index, kind in enumerate(config.layers)
+                            if kind == "full_attention"), torch.bfloat16)
+        query_dtype = _attention_query_dtype(source, metadata, mode, config.text["head_dim"], cache_dtype)
         attention_buffers = {field: zeros((source.shape[0], width), query_dtype if field == "q" else None)
                              for field, width in (
             ("q", config.text["num_attention_heads"] * config.text["head_dim"]),

@@ -646,10 +646,9 @@ class ParallelProjections:
         self.arena = workspace
         self.values, self.scales, self.outputs, self.plans = [], [], [], []
         for projection in self.projections:
-            values, scales, gain, fp4 = _weight_parts(projection.weight)
-            if (values.dtype not in (torch.float8_e4m3fn, torch.uint8) or gain is not None or fp4
-                    or projection.bias is not None):
+            if not self.supports(projection):
                 raise ValueError("parallel projections require unbiased MXFP8 or MXFP4 weights")
+            values, scales, _, _ = _weight_parts(projection.weight)
             self.values.append(values)
             self.scales.append(scales.view(torch.uint8))
             self.outputs.append(projection.output)
