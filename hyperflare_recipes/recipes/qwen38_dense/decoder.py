@@ -389,10 +389,12 @@ class FullAttention(torch.nn.Module):
 class PreparedDecoder:
     def __init__(self, weights, scratch, metadata, pool, *, mode, vocabulary_runtime,
                  coordinator, session, name, workspace, scoring=None, records=None,
-                 vision_state=None, sample=True):
+                 vision_state=None, sample=True, attention=None):
         if not sample and (mode != "prefill" or scoring is not None):
             raise ValueError("non-sampling decoders require unscored prefill mode")
         self.sample = bool(sample)
+        # `attention` replaces the full-attention layer class for a recipe that composes its own.
+        attention = FullAttention if attention is None else attention
         self.weights, self.scratch, self.metadata, self.pool = weights, scratch, metadata, pool
         self.vision_state = vision_state if mode == "prefill" else None
         self.embedding = PreparedEmbedding(weights.tree.embed_tokens.weight, metadata.token_ids,
@@ -473,7 +475,7 @@ class PreparedDecoder:
                     projection_staging=scratch.quantized,
                     gdn_buffers=None).functional(session=session, dynamic_metadata=True))
             else:
-                layer.self_attn = FullAttention(original.self_attn, weights, source, metadata, pool, index,
+                layer.self_attn = attention(original.self_attn, weights, source, metadata, pool, index,
                     mode=mode, session=session, workspace=workspace, name=name + "." + prefix + "attention",
                     buffers=attention_buffers, projection_staging=scratch.quantized,
                     cache_only=is_cache_only)

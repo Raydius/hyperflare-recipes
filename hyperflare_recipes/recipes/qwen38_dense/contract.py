@@ -5,13 +5,16 @@
 
 from ignition.preparation import contract as c
 from ignition.preparation import runtime_core_pb2 as p
-from hyperflare_recipes.recipes.qwen38.contract import PATCH_CAPACITIES, VISION, frontend
+from hyperflare_recipes.recipes.qwen38.contract import PATCH_CAPACITIES, VISION, frontend as qwen_frontend
 
 from .config import PAGE_TOKENS
 
 
-def prepare(signatures, buffers, pool, *, vocabulary, image_slots=0):
-    """Declare the text contract, or with ``image_slots`` the image front end and vision graphs."""
+def prepare(signatures, buffers, pool, *, vocabulary, image_slots=0, frontend=None):
+    """Declare the text contract, or with ``image_slots`` the image front end and vision graphs.
+
+    ``frontend`` replaces the Qwen frontend declaration for a recipe that extends it.
+    """
     vision = image_slots > 0
     kinds = {s.kind for s in signatures.values()}
     if "vision" in kinds and not vision:
@@ -46,4 +49,4 @@ def prepare(signatures, buffers, pool, *, vocabulary, image_slots=0):
                  *regions],
         graphs=graphs,
         vision={**VISION, "feature_slots": image_slots} if vision else None,
-        frontend=frontend(vision=vision))
+        frontend=qwen_frontend(vision=vision) if frontend is None else frontend)
