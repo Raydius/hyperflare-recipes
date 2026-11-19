@@ -362,8 +362,7 @@ class PreparedDecoder:
                  gdn_records=None, gdn_in_place: bool = False, runtime=None, barrier_runtime=None, vocabulary_runtime=None,
                  result_runtime=None, qsa_gather_runtime=None, qsa_shard_mode: str | None = None,
                  coordinator=None, sampling_workspace=None, scoring=None, sample: bool = True,
-                 feature_taps: tuple[int, ...] = (), auxiliary: torch.Tensor | None = None,
-                 sampler: bool = True):
+                 feature_taps: tuple[int, ...] = (), auxiliary: torch.Tensor | None = None):
         from hyperflare_recipes.components.embedding import PreparedEmbedding
         from hyperflare_recipes.components.linear import UnquantizedProjection
         from hyperflare_recipes.components.recurrent import DeltaMetadata
@@ -548,11 +547,9 @@ class PreparedDecoder:
                 coordinator=coordinator, name=f"{name}.lm_head")
         self.scoring = None if scoring is None else scoring.prepare(scratch.hidden, weights.tree.lm_head.weight,
             vocabulary=248320, session=session, coordinator=coordinator, name=name + ".prompt")
-        # ``sampler=False`` leaves sampling to the owner while the state still gathers the
-        # sample rows: the mixed round samples its prompt and decode roles separately.
         self.sampler = None
         self.completion_recorder = None
-        if not verification and sampler:
+        if not verification:
             state, inputs = self.state, self.state.inputs
             if self.sample:
                 from ignition.components.sampling import PreparedSampling
