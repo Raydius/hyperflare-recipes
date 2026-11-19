@@ -38,8 +38,6 @@ for _container, _fields in (
      ('a1_gscale', 'w1_fp4', 'w1_blockscale', 'w1_alphas',
       'a2_gscale', 'w2_fp4', 'w2_blockscale', 'w2_alphas')),
     ('b12x.moe.fused_moe.weights.PreparedExperts', ('_impl',)),
-    ('hyperflare_recipes.recipes.qwen38_dense.dspark_weights.DraftWeights',
-     ('projection', 'hidden_norm', 'context_kv', 'norm', 'markov_embedding', 'markov_head', 'layers')),
     # b12x packed linear weight objects hold the stored projection bytes.
     ('b12x.gemm.blockscaled._linear.MXFP8LinearWeight', ('weight',)),
     ('b12x.gemm.blockscaled._linear.TensorFP8LinearWeight',

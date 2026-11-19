@@ -385,7 +385,7 @@ def prepare(snapshot, config, *, progress=None, core_storage):
                             validate_prefill=None if prefill_vision is None else prefill_vision.validate_prefill)
                         context = None
                         if enabled:
-                            context = dspark.PreparedContext if config.dspark else partial(
+                            context = dspark.prepared_context if config.dspark else partial(
                                 PreparedContext, runtime=None, coordinator=None, compact_prefill=mode == "prefill")
                         # Retain DFlash2 prefill absorption on non-terminal chunks so draft KV rings
                         # remain complete at any dynamically selected prefix checkpoint cut.
