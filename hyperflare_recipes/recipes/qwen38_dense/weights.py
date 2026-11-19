@@ -49,12 +49,17 @@ class ModelWeights:
 
     @classmethod
     def load(cls, manifest, device, *, progress=None, mtp=False, draft_snapshot=None,
-             online_mxfp8=False, draft_head_quantization=None, speculative_method="dflash2", vision=False):
+             online_mxfp8=False, draft_head_quantization=None, speculative_method="dflash2",
+             rope_scaling=None, vision=False):
         from transformers import Qwen3_5TextConfig, Qwen3_5TextModel
 
         config = ModelConfig.load(manifest.snapshot, vision=vision)
         if draft_head_quantization is not None and "lm_head" in config.quantization:
             raise ValueError("draft head conversion requires BF16 checkpoint vocabulary weights")
+        if rope_scaling is not None:
+            if rope_scaling.original_max_position_embeddings != config.text["max_position_embeddings"]:
+                raise ValueError("rope scaling must extend the checkpoint's declared context")
+            config = replace(config, rope_scaling=rope_scaling)
         dspark = mtp and speculative_method == "dspark"
         if dspark and draft_head_quantization is not None:
             raise ValueError("the DSpark draft uses the target's vocabulary head")
