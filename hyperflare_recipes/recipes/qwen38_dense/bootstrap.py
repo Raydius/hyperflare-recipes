@@ -223,6 +223,7 @@ def _declared_weight_roots(weights):
     so one layer's change would rename the whole model. Each layer's prepared
     projections are grouped with that layer instead; keys are matched by their
     declared `layers.N.` prefix here, never by native path inference.
+    Elephant-1 passes weights that have no vision encoder field.
     """
     roots = {'embedding': weights.tree.embed_tokens, 'norm': weights.tree.norm,
              'head': weights.head, 'draft': weights.draft, 'draft_head': weights.draft_head}
