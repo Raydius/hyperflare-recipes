@@ -43,6 +43,7 @@ from ignition.preparation.selection import BenchmarkSelection
 from ignition.preparation.tuning import RecordedPreparationSession, with_autotune_effort
 from ignition.preparation.tuning_replicas import TuningReplica
 from ignition.progress import phase
+from ignition.declaration import RopeScaling
 
 from ignition.components.vision_state import PrefillVisionInputs, VisionState
 from hyperflare_recipes.recipes.qwen38.vision import PreparedVision, VisionMetadata, VisionScratch
@@ -66,6 +67,8 @@ class PreparationConfig(BasePreparationConfig):
     online_mxfp8: bool = False
     draft_head_quantization: str | None = None
     device: int = 0
+    # Declared rope interpolation that extends the context past the trained 262,144 tokens.
+    rope_scaling: RopeScaling | None = None
     max_active: int = 32
     # Image request slots; zero prepares the language model only.
     image_concurrency: int = 0
@@ -115,8 +118,11 @@ class PreparationConfig(BasePreparationConfig):
             if (not selection.prefill_chunk and self.speculative_token_capacity is not None
                     and selection.max_batch * selection.width > self.speculative_token_capacity):
                 raise ValueError("benchmark shapes exceed the speculative token capacity")
-        if not PAGE_TOKENS <= self.context <= 262144 or self.context % PAGE_TOKENS:
-            raise ValueError("Qwen dense context must be 128-aligned in [128,262144]")
+        if self.rope_scaling is not None and self.rope_scaling.original_max_position_embeddings != 262144:
+            raise ValueError("Qwen dense rope scaling must extend the trained 262,144-token context")
+        ceiling = 262144 if self.rope_scaling is None else self.rope_scaling.context
+        if not PAGE_TOKENS <= self.context <= ceiling or self.context % PAGE_TOKENS:
+            raise ValueError(f"Qwen dense context must be 128-aligned in [128,{ceiling}]")
         if not 128 <= self.prefill_chunk_size <= self.context or self.prefill_chunk_size % 128:
             raise ValueError("Qwen dense prefill chunk must be 128-aligned and fit the context")
         if self.snapshot_budget_bytes <= 0 or self.headroom_bytes < 0:
@@ -177,7 +183,7 @@ class PreparationConfig(BasePreparationConfig):
 
 
 def session_identity(*, config, headers, draft, draft_headers, draft_block_size, study_widths,
-                     online_mxfp8, draft_head_quantization, vision=None):
+                     online_mxfp8, draft_head_quantization, vision=None, rope_scaling=None):
     """Tuning identity of one preparation.
 
     ``vision`` is the prepared image declaration, or ``None`` for a text-only
@@ -194,6 +200,10 @@ def session_identity(*, config, headers, draft, draft_headers, draft_block_size,
         **({} if not study_widths else {"speculation_study_blocks": study_widths}),
         "online_mxfp8": online_mxfp8,
         "draft_head_quantization": draft_head_quantization,
+        # Scaled and native preparations never share tuning or prefix-cache identity.
+        **({} if rope_scaling is None else {"rope_scaling": {"factor": rope_scaling.factor,
+            "original_max_position_embeddings": rope_scaling.original_max_position_embeddings,
+            "beta_fast": rope_scaling.beta_fast, "beta_slow": rope_scaling.beta_slow}}),
         **({} if vision is None else {"vision": vision}),
         "contract": ("qwen38-dense.graph-inputs.v1" if vision is None
                      else "qwen38-dense.graph-inputs.v2")}, sort_keys=True).encode()).hexdigest()
@@ -244,7 +254,8 @@ def prepare(snapshot, config, *, progress=None, core_storage):
     weights = ModelWeights.load(manifest, device, progress=progress, mtp=config.mtp,
         draft_snapshot=config.draft_snapshot, online_mxfp8=config.online_mxfp8,
         draft_head_quantization=config.draft_head_quantization,
-        vision=config.image_concurrency > 0, speculative_method=config.speculative_method)
+        vision=config.image_concurrency > 0, speculative_method=config.speculative_method,
+        rope_scaling=config.rope_scaling)
     release_unused()
     study_widths = (() if config.benchmark_selection is None
                     else config.benchmark_selection.selected_study_widths)
@@ -282,7 +293,7 @@ def prepare(snapshot, config, *, progress=None, core_storage):
             draft_headers=draft_headers,
             draft_block_size=config.verification_width if config.mtp else None,
             study_widths=study_widths, online_mxfp8=config.online_mxfp8,
-            draft_head_quantization=config.draft_head_quantization,
+            draft_head_quantization=config.draft_head_quantization, rope_scaling=config.rope_scaling,
             vision=(None if not patches else {"image_slots": config.image_concurrency,
                                               "patch_capacities": patches}))
         session = RecordedPreparationSession(
