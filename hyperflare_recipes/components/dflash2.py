@@ -38,17 +38,21 @@ def _inverse(geometry, device):
     ))
 
 
-def _rotary(values, positions, inverse):
+def _rotary(values, positions, inverse, gain=1.0):
     """Rotate with one position per token, or the temporal axis of per-axis positions.
 
     The draft has one rotary axis. Per-axis positions carry the temporal position
-    in their first column, which is the position the draft rotates at.
+    in their first column, which is the position the draft rotates at. A YaRN attention
+    factor ``gain`` is multiplied into the FP32 cosine and sine.
     """
     if positions.ndim == 2:
         positions = positions[:, 0]
     frequencies = positions.clamp_min(0).float()[:, None] * inverse[None]
     angles = torch.cat((frequencies, frequencies), -1)
-    cos, sin = angles.cos().to(values.dtype), angles.sin().to(values.dtype)
+    cos, sin = angles.cos(), angles.sin()
+    if gain != 1.0:
+        cos, sin = cos * gain, sin * gain
+    cos, sin = cos.to(values.dtype), sin.to(values.dtype)
     return values * cos[:, None] + rotate_half(values) * sin[:, None]
 
 
@@ -103,10 +107,16 @@ class PreparedContext:
     Projection and staged key/value tensors are local to the traced forward.
     Compact prefill consumes a suffix captured from all live input rows; counts
     must equal the metadata lengths used by PreparedContextCapture.
+
+    A draft that attends every accepted position stores its history in pages instead: ``pages``
+    returns a layer's key and value pages, and ``slots`` maps the metadata and accepted counts to
+    each row's page slot, or -1 for a row that is not stored. ``inverse`` and ``gain`` replace the
+    geometry's plain rotary frequencies and unit gain.
     """
 
     def __init__(self, weights, auxiliary, metadata, pool, *, session, name, workspace,
-                 runtime, coordinator, compact_prefill=False, examples=None):
+                 runtime, coordinator, compact_prefill=False, examples=None,
+                 pages=None, slots=None, inverse=None, gain=1.0):
         self.weights = weights
         c, a = weights.config.draft, weights.config.draft.attention
         self.window = a.window
@@ -117,7 +127,8 @@ class PreparedContext:
                 raise ValueError("compact prefill context requires one retained window of auxiliary rows")
         self.compact = compact
         _, kv_heads = a.local(weights.shard)
-        self.inverse = _inverse(a, auxiliary.device)
+        self.inverse = _inverse(a, auxiliary.device) if inverse is None else inverse
+        self.gain, self.slots = gain, slots
         local = declaration_tensor(examples, "dflash.context.local",
             (tokens, hidden // weights.shard.world_size), torch.bfloat16, auxiliary.device)
         projected = declaration_tensor(examples, "dflash.context.projected", (tokens, hidden), torch.bfloat16, auxiliary.device)
@@ -137,8 +148,9 @@ class PreparedContext:
             key = declaration_tensor(examples, "dflash.context.key", (tokens, kv_heads, a.key_dim), torch.bfloat16, auxiliary.device)
             value = declaration_tensor(examples, "dflash.context.value", (tokens, kv_heads, a.value_dim), torch.bfloat16, auxiliary.device)
             slots = torch.full((tokens,), -1, dtype=torch.int64, device=auxiliary.device)
-            writer = PreparedPagedKVWriter(key, value,
-                pool.reserved_region(f"draft{index}.key"), pool.reserved_region(f"draft{index}.value"),
+            stored = (pool.reserved_region(f"draft{index}.key"), pool.reserved_region(f"draft{index}.value")
+                      ) if pages is None else pages(index)
+            writer = PreparedPagedKVWriter(key, value, *stored,
                 slots, session=session, name=f"{name}.{index}.write",
                 caller_owned_placeholders=True).functional()
             self.layers.append((norm, writer))
@@ -148,27 +160,33 @@ class PreparedContext:
 
     def __call__(self, auxiliary, counts, metadata):
         m = metadata
-        if not self.compact:
-            positions = m.positions
-            offset = positions - m.starts[m.requests]
-            count = counts[m.requests]
-            valid = (positions >= 0) & (offset >= 0) & (offset < count)
-            valid &= offset >= (count - self.window).clamp_min(0)
-            states = m.state_rows[m.requests]
+        axes = rotary_positions(m)
+        if self.slots is not None:
+            # Paged draft history: every accepted position is stored at the slot the caller maps.
+            positions, slots = m.positions, self.slots(m, counts)
+            rope = positions if axes is m.positions else axes
         else:
-            count = counts[0].long()
-            kept = count.clamp(max=self.window)
-            offsets = torch.arange(auxiliary.shape[0], device=auxiliary.device)
-            indices = (m.query_start_loc[0] + count - kept + offsets).clamp(
-                0, m.positions.numel() - 1)
-            positions = m.positions[indices]
-            valid = (offsets < kept) & (positions >= 0)
-            states = m.state_rows[0]
-        rope, axes = positions, rotary_positions(m)
-        if axes is not m.positions:
-            # Metadata of a pool with a rotary offset region carries per-axis positions.
-            rope = axes[indices] if self.compact else axes
-        slots = torch.where(valid, states * self.window + positions.remainder(self.window), -1)
+            if not self.compact:
+                positions = m.positions
+                offset = positions - m.starts[m.requests]
+                count = counts[m.requests]
+                valid = (positions >= 0) & (offset >= 0) & (offset < count)
+                valid &= offset >= (count - self.window).clamp_min(0)
+                states = m.state_rows[m.requests]
+            else:
+                count = counts[0].long()
+                kept = count.clamp(max=self.window)
+                offsets = torch.arange(auxiliary.shape[0], device=auxiliary.device)
+                indices = (m.query_start_loc[0] + count - kept + offsets).clamp(
+                    0, m.positions.numel() - 1)
+                positions = m.positions[indices]
+                valid = (offsets < kept) & (positions >= 0)
+                states = m.state_rows[0]
+            rope = positions
+            if axes is not m.positions:
+                # Metadata of a pool with a rotary offset region carries per-axis positions.
+                rope = axes[indices] if self.compact else axes
+            slots = torch.where(valid, states * self.window + positions.remainder(self.window), -1)
         projected = self.norm(self.gather(self.project(auxiliary)))
         kv = self.project_kv(projected)
         a = self.weights.config.draft.attention
@@ -177,7 +195,7 @@ class PreparedContext:
         width = kv_heads * a.key_dim
         chunks = kv.view(auxiliary.shape[0], len(self.layers), width + kv_heads * a.value_dim)
         for index, (norm, writer) in enumerate(self.layers):
-            key = _rotary(norm(chunks[:, index, :width].view(key_shape)), rope, self.inverse)
+            key = _rotary(norm(chunks[:, index, :width].view(key_shape)), rope, self.inverse, self.gain)
             value = chunks[:, index, width:].view(auxiliary.shape[0], kv_heads, a.value_dim).contiguous()
             writer(key, value, slots)
 
