@@ -35,14 +35,12 @@ class DraftLayerWeights:
     mlp_conv: dict | None
 
 
-# Projector-less DFlash drafts name the context projection and its norm under ``encoder``.
-_PROJECTION_NAMES = {"dflash2": ("fc", "hidden_norm"), "dflash": ("encoder.fc", "encoder.output_norm_enc"),
-                     "dspark": ("fc", "hidden_norm")}
+_PROJECTION_NAMES = {"dflash2": ("fc", "hidden_norm"), "dspark": ("fc", "hidden_norm")}
 # A DSpark draft stores the layers without convolutions or a selector, a low-rank Markov transition,
 # and a confidence head.
 # The confidence head is not executed: its tensors are checked for shape and never read.
 _LOADED_PREFIXES = {"dspark": ("fc.", "hidden_norm.", "norm.", "layers.", "markov_head.")}
-_FAMILY = {"dflash2": "DFlash2", "dflash": "DFlash2", "dspark": "DSpark"}
+_FAMILY = {"dflash2": "DFlash2", "dspark": "DSpark"}
 
 
 @weight_container(('projection', 'hidden_norm', 'context_kv', 'norm', 'layers', 'selector', 'markov_embedding', 'markov_head'))

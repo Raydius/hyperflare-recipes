@@ -193,16 +193,14 @@ def test_image_validation_precedes_prompt_state_gather(speculative):
 
 @pytest.mark.parametrize("drafting", [False, True])
 def test_residual_checkpoint_follows_the_target_residual_region(drafting, monkeypatch):
-    """The checkpoint feeds the MTP draft: an MTP layout compiles it, the DFlash layout has no region for it."""
+    """The checkpoint feeds the MTP draft: a layout with the MTP regions compiles it, one without them does not."""
     from ignition.recipes.qwen38 import decoder_state
     from ignition.recipes.qwen38.state import HybridStateLayout
 
-    # The DFlash2 row: seven speculative histories and five draft windows, no MTP regions.
-    dflash = HybridStateLayout.build(speculative_tokens=7, world_size=1, mtp=False, draft_windows=(5, 2048, 8, 128))
     compiled = []
     monkeypatch.setattr(decoder_state, "compile_kernel", lambda kernel, args, grid: compiled.append(kernel) or kernel)
-    for layout, expected in ((HybridStateLayout.build(speculative_tokens=7), True),
-                             (HybridStateLayout.build(), False), (dflash, False)):
+    for layout, expected in ((HybridStateLayout.build(), False),
+                             (HybridStateLayout.build(speculative_tokens=7), True)):
         pool = SimpleNamespace(layout=layout, region=lambda name: torch.zeros((2, 4)))
         state = PreparedDecoderState.__new__(PreparedDecoderState)
         state.pool, state.maintain_draft_state, state.rows = pool, drafting, 1
@@ -217,39 +215,39 @@ def test_residual_checkpoint_follows_the_target_residual_region(drafting, monkey
 
 
 @pytest.mark.parametrize("prompt_row", [-1, 1])
-def test_packed_features_are_gathered_per_role(prompt_row):
-    """The packed forward writes one tapped-feature buffer; finish_runtime() splits it the way hidden and residual split."""
+def test_packed_hidden_and_residual_gather_per_role(prompt_row):
+    """finish_runtime() hands each role only its own tokens' hidden and residual rows."""
     from ignition.components.recurrent import DeltaMetadata
     from ignition.recipes.qwen38.mixed_state import FunctionalStatePartition, MixedScratch, PreparedMixedState
     from ignition.recipes.qwen38.ple import PLEMetadata
 
-    batch, width, prefill, length, feature_width = 4, 3, 16, 5, 8
+    batch, width, prefill, length = 4, 3, 16, 5
     tokens = prefill + (batch - 1) * width
     inputs = DecoderInputs.allocate("cpu", context=256, tokens=tokens, capacity=batch)
     p, d = role_inputs(inputs, prefill), role_inputs(inputs, batch * width)
     packing = MixedPacking(inputs, p, d, batch, width, prefill)
     scratch = MixedScratch.allocate(prefill, batch * width, "cpu", world_size=1)
+    seen = {}
 
-    def role(n, rows):
+    def role(n, rows, name):
         gdn = DeltaMetadata.allocate(rows, "cpu")
         ple = PLEMetadata(torch.zeros(n, dtype=torch.int64), gdn.query_start_loc, torch.zeros((rows, 2), dtype=torch.int64),
                           gdn.convolution_slots, gdn.fresh, gdn.accepted_tokens, gdn.num_seqs, gdn.num_tokens)
+        def finish_runtime(runtime, hidden, residual):
+            seen[name] = (hidden, residual)
+            return hidden[:0]
         return SimpleNamespace(tokens=n, gdn=gdn, ple=ple, requests=None, pool=None, inputs=inputs,
                                prepare_hidden=lambda *a: None, prepare_residual=lambda *a: None,
-                               finish_runtime=lambda runtime, hidden, residual: hidden[:0])
+                               finish_runtime=finish_runtime)
 
-    prompt, decode = role(prefill, 1), role(batch * width, batch)
-    features = torch.arange(tokens, dtype=torch.bfloat16)[:, None].expand(-1, feature_width).contiguous()
-    prompt_features = torch.full((prefill, feature_width), -1, dtype=torch.bfloat16)
-    decode_features = torch.full((batch * width, feature_width), -1, dtype=torch.bfloat16)
-    with pytest.raises(ValueError, match="packed buffer and both role buffers"):
-        PreparedMixedState(packing, prompt, decode, scratch, prompt_residual=scratch.prompt_residual,
-                           decode_residual=scratch.decode_residual, features=features)
+    prompt, decode = role(prefill, 1, "prompt"), role(batch * width, batch, "decode")
     state = PreparedMixedState(packing, prompt, decode, scratch, prompt_residual=scratch.prompt_residual,
-        decode_residual=scratch.decode_residual, features=features, prompt_features=prompt_features,
-        decode_features=decode_features)
-    state.prepare_hidden(torch.zeros((tokens, 2560), dtype=torch.bfloat16), torch.zeros((batch * width + 1, 2560), dtype=torch.bfloat16))
-    state.prepare_residual(torch.zeros((tokens, 10240), dtype=torch.bfloat16))
+                               decode_residual=scratch.decode_residual)
+    # A row carries its packed token index plus one, so a gathered row is identifiable and never zero.
+    hidden = torch.arange(1, tokens + 1, dtype=torch.bfloat16)[:, None].expand(-1, 2560).contiguous()
+    residual = (2 * torch.arange(1, tokens + 1, dtype=torch.bfloat16))[:, None].expand(-1, 10240).contiguous()
+    state.prepare_hidden(hidden, torch.zeros((batch * width + 1, 2560), dtype=torch.bfloat16))
+    state.prepare_residual(residual)
     inputs.live_rows.fill_(batch)
     inputs.prefill_row.fill_(prompt_row)
     inputs.row_slot_ids.copy_(torch.tensor([2, 0, 3, 1]))
@@ -267,18 +265,18 @@ def test_packed_features_are_gathered_per_role(prompt_row):
                         gdn=SimpleNamespace(query_start_loc=torch.arange(batch + 1) * width)))
     parts = tuple(FunctionalStatePartition(mode, None, indices, valid) for mode, indices, valid in (
         ("prefill", packing.prompt_indices, packing.prompt_valid), ("decode", packing.decode_indices, packing.decode_valid)))
-    state.finish_runtime(SimpleNamespace(gdn_partitions=SimpleNamespace(parts=parts), prompt=None, decode=None),
-                         torch.zeros((tokens, 2560), dtype=torch.bfloat16), torch.zeros((tokens, 10240), dtype=torch.bfloat16))
-    lengths = inputs.query_lengths.tolist()
-    starts = [sum(lengths[:r]) for r in range(batch)]
-    expected_prompt = torch.zeros_like(prompt_features)
-    if prompt_row >= 0:
-        expected_prompt[:length] = features[starts[prompt_row]:starts[prompt_row] + length]
-    expected_decode = torch.zeros_like(decode_features)
-    for row in range(batch):
-        if row != prompt_row:
-            expected_decode[row * width:(row + 1) * width] = features[starts[row]:starts[row] + width]
-    torch.testing.assert_close(prompt_features, expected_prompt, rtol=0, atol=0)
-    torch.testing.assert_close(decode_features, expected_decode, rtol=0, atol=0)
-    assert PreparedMixedState(packing, prompt, decode, scratch, prompt_residual=scratch.prompt_residual,
-                              decode_residual=scratch.decode_residual).features is None
+    sample = state.finish_runtime(SimpleNamespace(gdn_partitions=SimpleNamespace(parts=parts), prompt=None, decode=None),
+                                 hidden, residual)
+
+    assert sample.shape[0] == 0
+    for name, indices, valid in (("prompt", packing.prompt_indices, packing.prompt_valid),
+                                 ("decode", packing.decode_indices, packing.decode_valid)):
+        gathered_hidden, gathered_residual = seen[name]
+        assert gathered_hidden.shape == (indices.numel(), 2560)
+        assert gathered_residual.shape == (indices.numel(), 10240)
+        assert int((gathered_hidden != 0).any(dim=1).sum()) == int(valid.sum())
+        assert int((gathered_residual != 0).any(dim=1).sum()) == int(valid.sum())
+        torch.testing.assert_close(gathered_hidden[valid], hidden[indices[valid]], rtol=0, atol=0)
+        torch.testing.assert_close(gathered_residual[valid], residual[indices[valid]], rtol=0, atol=0)
+    if prompt_row < 0:
+        assert not packing.prompt_valid.any() and not seen["prompt"][0].any()
