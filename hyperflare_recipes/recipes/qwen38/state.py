@@ -34,22 +34,14 @@ class HybridStateLayout(StateLayout):
     draft_ring_capacity: int = 0
 
     @classmethod
-    def build(cls, *, speculative_tokens: int = 0, world_size: int = 1, draft_config=None, mtp: bool = True,
-              draft_windows: tuple[int, int, int, int] | None = None) -> HybridStateLayout:
+    def build(cls, *, speculative_tokens: int = 0, world_size: int = 1, draft_config=None) -> HybridStateLayout:
         """Lay out one continuation row.
 
-        ``mtp`` keeps the MTP feedback and draft ring regions; without it the
-        speculative widening of the GDN, PLE and QSA histories remains and no
-        draft ring is reported. ``draft_windows=(layers, window, kv_heads,
-        head_dim)`` adds E4M3 ``draft{layer}.key``/``value`` sliding-window
-        regions that snapshots copy as plain state, named as the shared DFlash2
-        component reads them.
+        ``draft_config`` adds the shared DFlash2 draft context rows, which
+        snapshots copy as plain state under the names the component reads.
         """
         if type(speculative_tokens) is not int or not 0 <= speculative_tokens <= 7:
             raise ValueError("hybrid state supports zero through seven speculative tokens")
-        if draft_windows is not None and (len(draft_windows) != 4
-                or any(type(value) is not int or value <= 0 for value in draft_windows)):
-            raise ValueError("draft windows require positive (layers, window, kv_heads, head_dim)")
         from hyperflare_recipes.components.parallel import TensorParallelShard
 
         TensorParallelShard(0, world_size)
@@ -78,13 +70,8 @@ class HybridStateLayout(StateLayout):
             add(f"qsa.{layer}.boundary_key", geometry.main_k_page_shape, geometry.kv_dtype)
             add(f"qsa.{layer}.boundary_value", geometry.main_v_page_shape, geometry.kv_dtype)
             add(f"qsa.{layer}.boundary_selector", geometry.compressed_page_shape, torch.bfloat16)
-        if draft_windows is not None:
-            layers, window, kv_heads, head_dim = draft_windows
-            for layer in range(layers):
-                add(f"draft{layer}.key", (window, kv_heads, head_dim), torch.float8_e4m3fn)
-                add(f"draft{layer}.value", (window, kv_heads, head_dim), torch.float8_e4m3fn)
         ring = 0
-        if speculative_tokens and mtp and draft_config is None:
+        if speculative_tokens and draft_config is None:
             ring = geometry.raw_ring_capacity
             add("target_residual", (10240,), torch.bfloat16)
             add("target_residual_position", (3,), torch.int64)
@@ -132,7 +119,6 @@ class HybridStatePool(StateStorage):
 
     @classmethod
     def allocate(cls, slots: int, device, *, speculative_tokens: int = 0, world_size: int = 1,
-                 mtp: bool = True, draft_windows: tuple[int, int, int, int] | None = None,
                  storage=None, backed_slots: int | None = None, draft_config=None) -> HybridStatePool:
         if type(slots) is not int or slots < 2:
             raise ValueError("hybrid state requires null and live slots")
@@ -142,7 +128,7 @@ class HybridStatePool(StateStorage):
         if backed_slots != slots and storage is None:
             raise ValueError("partial state backing requires core storage")
         layout = HybridStateLayout.build(speculative_tokens=speculative_tokens, world_size=world_size,
-                                         draft_config=draft_config, mtp=mtp, draft_windows=draft_windows)
+                                         draft_config=draft_config)
         backing = (torch.zeros((slots, layout.row_bytes), dtype=torch.uint8, device=device) if storage is None else
             storage.device_allocate("continuations", (slots, layout.row_bytes), torch.uint8, group="STATE_ROWS",
                                     maximum=torch.cuda.mem_get_info(device)[1] // layout.row_bytes, units=backed_slots))

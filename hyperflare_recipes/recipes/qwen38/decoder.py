@@ -330,18 +330,6 @@ def _split_prefill_metadata(gdn, qsa, half: int):
     return gdn_a, gdn_b, qsa_a, qsa_b
 
 
-def validate_feature_taps(feature_taps, auxiliary, tokens: int, device) -> None:
-    """Check the tapped-layer feature buffer: BF16 ``[tokens, len(taps) * 2560]`` on the model device."""
-    taps = tuple(feature_taps)
-    if any(type(tap) is not int or not 0 <= tap < 48 for tap in taps) or len(set(taps)) != len(taps):
-        raise ValueError("feature taps must be distinct layer indices in 0 through 47")
-    if (auxiliary is None) != (not taps):
-        raise ValueError("feature taps and their auxiliary buffer are declared together")
-    if auxiliary is not None and (auxiliary.shape != (tokens, len(taps) * 2560)
-            or auxiliary.dtype != torch.bfloat16 or auxiliary.device != device):
-        raise ValueError(f"tapped features require BF16 [token_capacity,{len(taps) * 2560}] on the model device")
-
-
 class PreparedDecoder:
     """Capture the canonical 48-layer residual composition with prepared operators.
 
@@ -362,7 +350,7 @@ class PreparedDecoder:
                  gdn_records=None, gdn_in_place: bool = False, runtime=None, barrier_runtime=None, vocabulary_runtime=None,
                  result_runtime=None, qsa_gather_runtime=None, qsa_shard_mode: str | None = None,
                  coordinator=None, sampling_workspace=None, scoring=None, sample: bool = True,
-                 feature_taps: tuple[int, ...] = (), auxiliary: torch.Tensor | None = None):
+    ):
         from hyperflare_recipes.components.embedding import PreparedEmbedding
         from hyperflare_recipes.components.linear import UnquantizedProjection
         from hyperflare_recipes.components.recurrent import DeltaMetadata
@@ -395,8 +383,8 @@ class PreparedDecoder:
             raise ValueError("layer trace requires BF16 [48,token_capacity,10240] on the model device")
         self.layer_outputs = layer_outputs
         self.context_capture, self.context_layers = None, ()
-        validate_feature_taps(feature_taps, auxiliary, state.tokens, scratch.hidden.device)
-        self.feature_taps, self.auxiliary = tuple(feature_taps), auxiliary
+        # `capture_context` binds the DFlash2 context buffer that `PreparedContext` reads.
+        self.auxiliary = None
         self.embedding_injection = embedding_injection
         self.workspaces, self.ple_table, self.qsa_states = workspaces, ple_table, qsa_states
         language = weights.tree.model.language_model
@@ -782,11 +770,6 @@ class PreparedDecoder:
                 if index in self.context_layers:
                     features = residual.view(-1, 4, 2560).mean(dim=1)
                     self.context_capture(capture, features, self.context_layers.index(index) * 2560)
-                if index in self.feature_taps:
-                    # The draft context reads the stream mean of the same raw residual the trace records.
-                    tap = self.feature_taps.index(index)
-                    self.auxiliary[:, tap * 2560:(tap + 1) * 2560].copy_(
-                        residual.view(-1, 4, 2560).float().mean(1).to(torch.bfloat16))
         if not self.sample:
             self.state.finish_runtime(runtime, None, residual)
             if self.completion_recorder is not None:

@@ -120,15 +120,6 @@ def test_dflash2_check_rejects_missing_renamed_extra_misshaped_or_non_bf16_tenso
         validate_metadata(replace(manifest, tensors=tensors), StubDraftConfig(SMALL))
 
 
-def test_projector_switch_keeps_the_dflash2_tensor_set_apart(tmp_path):
-    fabricate(tmp_path, SMALL)
-    manifest = inspect_indexed_checkpoint(tmp_path)
-    with pytest.raises(ValueError, match="tensor names disagree"):
-        validate_metadata(manifest, StubDraftConfig(SMALL), projector="dflash")
-    with pytest.raises(ValueError, match="tensor names disagree"):
-        DraftWeights.load(tmp_path, StubDraftConfig(SMALL), "cpu", TensorParallelShard(0, 1), projector="dflash")
-
-
 def test_draft_scratch_declares_complete_sixteen_token_blocks():
     config, shard = StubDraftConfig(SMALL), TensorParallelShard(0, 1)
     scratch = DraftScratch.allocate(config, shard, 32)
