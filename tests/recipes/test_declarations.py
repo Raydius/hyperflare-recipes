@@ -126,9 +126,14 @@ def test_fp8_cache_views_and_planned_bytes(alias, world_size, drafting):
             speculative_tokens=model.recipe.speculation.draft_tokens if drafting else 0)
         caches = [pool.attention(layer) for layer, kind in enumerate(config.layers) if kind == "mla"]
     elif model.recipe.name == "qwen38_dense":
-        # Preparation sizes the row from the widest prepared verification, so the tie must use it too.
+        # Planning reserves the row of the widest verification the recipe supports, the pending token plus
+        # `max_draft_tokens`; preparing fewer drafts allocates a smaller row inside that reservation.
         pool = module.ContinuationPool.for_model(config, 2, 3, "meta", mtp=drafting,
-            verification_width=max(model.recipe.speculation.widths) if drafting else 1)
+            verification_width=model.recipe.max_draft_tokens + 1 if drafting else 1)
+        if drafting:
+            prepared = module.continuation_layout(config, mtp=True,
+                verification_width=max(model.recipe.speculation.widths))
+            assert prepared.row_bytes < pool.layout.row_bytes
         layers = [i for i, kind in enumerate(config.layers) if kind == "full_attention"]
         caches = [cache for layer in layers
                   for cache in pool.attention(layer, config)]
