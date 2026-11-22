@@ -13,12 +13,23 @@ from types import SimpleNamespace
 import pytest
 
 from ignition import planning
+from ignition.errors import UsageError
 from hyperflare_recipes.recipes import resolve
 from ignition.declaration import Speculation
 
 HUB = Path.home() / ".cache/huggingface/hub"
 QWEN = resolve("qwen3.8-flash")
 GLM = resolve("glm-5.3-flash")
+
+
+def resolve_installed(alias):
+    """Resolve a checkpoint this host has installed, or report the case as an unrun check."""
+    try:
+        return resolve(alias)
+    except UsageError as error:
+        if "checkpoint directory is unavailable" not in str(error):
+            raise
+        pytest.skip(str(error))
 
 
 @pytest.mark.parametrize("alias,drafts,graphs,options", [
@@ -52,7 +63,7 @@ def test_qwen_state_rows_and_pages_match_the_prepared_layouts(world_size):
     from hyperflare_recipes.recipes.qwen38.state import HybridStateLayout
 
     recipe = QWEN.recipe
-    assert recipe.speculation == Speculation(draft_tokens=5, token_capacity=128) and recipe.max_draft_tokens == 7
+    assert recipe.speculation == Speculation(draft_tokens=5, token_capacity=128, method="mtp") and recipe.max_draft_tokens == 7
     assert recipe.speculation.adaptive
 
     def layer(speculative_tokens):
@@ -83,7 +94,7 @@ def test_fp8_cache_views_and_planned_bytes(alias, world_size, drafting):
     import torch
     from hyperflare_recipes.components.parallel import TensorParallelShard
 
-    model = resolve(alias)
+    model = resolve_installed(alias)
     if drafting and model.recipe.speculation is None:
         pytest.skip("recipe has no learned draft")
     snapshot = model.snapshot(HUB)
@@ -103,7 +114,7 @@ def test_fp8_cache_views_and_planned_bytes(alias, world_size, drafting):
         draft_snapshot = HUB / f"models--{draft.REPOSITORY.replace('/', '--')}" / "snapshots" / draft.REVISION
         if not (draft_snapshot / "config.json").is_file():
             pytest.skip("draft checkpoint metadata is not installed")
-        config = replace(config, draft=draft.DraftConfig.load(draft_snapshot, config))
+        config = replace(config, draft=draft.load(draft_snapshot, config))
     module = import_module(prefix + ".pool")
     if model.recipe.name == "mimo_v2":
         shard = TensorParallelShard(0, world_size)
@@ -115,7 +126,9 @@ def test_fp8_cache_views_and_planned_bytes(alias, world_size, drafting):
             speculative_tokens=model.recipe.speculation.draft_tokens if drafting else 0)
         caches = [pool.attention(layer) for layer, kind in enumerate(config.layers) if kind == "mla"]
     elif model.recipe.name == "qwen38_dense":
-        pool = module.ContinuationPool.for_model(config, 2, 3, "meta", mtp=drafting)
+        # Preparation sizes the row from the widest prepared verification, so the tie must use it too.
+        pool = module.ContinuationPool.for_model(config, 2, 3, "meta", mtp=drafting,
+            verification_width=max(model.recipe.speculation.widths) if drafting else 1)
         layers = [i for i, kind in enumerate(config.layers) if kind == "full_attention"]
         caches = [cache for layer in layers
                   for cache in pool.attention(layer, config)]
@@ -499,7 +512,7 @@ def test_deepseek41_recipe_defaults_and_adapter_preserve_packed_gpu_planning(mon
 def test_parallel_recipe_defaults_capture_ragged_rows_at_declared_width(alias, options):
     from importlib import import_module
 
-    recipe = resolve(alias).recipe
+    recipe = resolve_installed(alias).recipe
     selected = recipe.speculation
     config = import_module(f"hyperflare_recipes.recipes.{recipe.name}.bootstrap").PreparationConfig(
         max_active=recipe.concurrency, speculative_widths=selected.widths,
@@ -574,7 +587,7 @@ def test_elephant1_adapter_configures_a_text_decision_core(monkeypatch, tmp_path
     model = resolve("elephant-1-9b")
     recipe = model.recipe
     assert (recipe.served_model_name, recipe.context, recipe.page_tokens) == ("Elephant-1", 16384, 128)
-    assert (recipe.concurrency, recipe.max_concurrency, recipe.prefill_chunk) == (2, 2, 16384)
+    assert (recipe.concurrency, recipe.max_concurrency, recipe.prefill_chunk) == (2, 4, 16384)
     assert recipe.speculation is None and recipe.max_draft_tokens == 0 and recipe.tensor_parallel == (1,)
     seen = []
     monkeypatch.setattr("hyperflare_recipes.recipes.elephant1.bootstrap.prepare",
