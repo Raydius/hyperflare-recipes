@@ -9,12 +9,12 @@ import os
 import pytest
 import torch
 
-from ignition.components.dflash2 import DraftScratch
-from ignition.components.dflash2_geometry import DraftAttentionGeometry
-from ignition.components.dflash2_weights import DraftWeights, validate_metadata
-from ignition.components.parallel import TensorParallelShard
+from hyperflare_recipes.components.dflash2 import DraftScratch
+from hyperflare_recipes.components.dflash2_geometry import DraftAttentionGeometry
+from hyperflare_recipes.components.dflash2_weights import DraftWeights, validate_metadata
+from hyperflare_recipes.components.parallel import TensorParallelShard
 from ignition.preparation.checkpoint import inspect_indexed_checkpoint
-from ignition.reference.qwen38_dflash2 import DFlash2Reference
+from hyperflare_recipes.reference.qwen38_dflash2 import DFlash2Reference
 
 # z-lab/Muse-Glimmer-30B-DFlash2: hidden 6656, intermediate 19968, 32/8 heads x 128, five sliding layers
 # tapping target layers [1, 13, 25, 37, 49], block 16, mask token 201818, two-tap group-16 convolutions,

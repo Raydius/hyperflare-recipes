@@ -8,8 +8,8 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from ignition.recipes.elephant1.config import ModelConfig
-from ignition.recipes.elephant1.weights import (
+from hyperflare_recipes.recipes.elephant1.config import ModelConfig
+from hyperflare_recipes.recipes.elephant1.weights import (
     _expected_shape, _separate_query_gate, check_manifest, checkpoint_parameters, projection_plan,
 )
 

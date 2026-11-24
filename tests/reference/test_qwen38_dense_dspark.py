@@ -8,7 +8,7 @@ import os
 import pytest
 import torch
 
-from ignition.reference.qwen38_dense_dspark import DSparkReference, yarn_frequencies
+from hyperflare_recipes.reference.qwen38_dense_dspark import DSparkReference, yarn_frequencies
 
 CUDA = os.environ.get("FLARE_RUN_CUDA_TESTS") == "1" and bool(os.environ.get("CUDA_VISIBLE_DEVICES"))
 ROPE = dict(rope_type="yarn", factor=32.0, original_max_position_embeddings=8192, beta_fast=32.0, beta_slow=1.0,
@@ -211,12 +211,12 @@ def test_prepared_draft_matches_the_reference_on_the_pinned_weights():
     from b12x.preparation import PreparationSession
     from safetensors import safe_open
 
-    from ignition.components.dflash2_weights import DraftLayerWeights, DraftWeights
-    from ignition.components.parallel import TensorParallelShard
-    from ignition.components.weights import MLPWeights
+    from hyperflare_recipes.components.dflash2_weights import DraftLayerWeights, DraftWeights
+    from hyperflare_recipes.components.parallel import TensorParallelShard
+    from hyperflare_recipes.components.weights import MLPWeights
     from ignition.preparation.scratch import ScratchArena
-    from ignition.recipes.qwen38_dense import dspark_config
-    from ignition.recipes.qwen38_dense.config import ModelConfig
+    from hyperflare_recipes.recipes.qwen38_dense import dspark_config
+    from hyperflare_recipes.recipes.qwen38_dense.config import ModelConfig
     from tests.recipes import test_qwen38_dense_dspark_cuda as prepared
 
     snapshot = Path(os.environ["FLARE_QWEN38_DSPARK_SNAPSHOT"])

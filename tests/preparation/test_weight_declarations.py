@@ -573,8 +573,8 @@ def test_qwen_dense_layer_projections_are_grouped_per_layer():
 
 def test_dense_weight_roots_accept_elephant1_weights():
     """Elephant-1 declares its weights through the dense Qwen roots and has no vision encoder field."""
-    from ignition.recipes.elephant1.weights import ModelWeights
-    from ignition.recipes.qwen38_dense.bootstrap import _declared_weight_roots
+    from hyperflare_recipes.recipes.elephant1.weights import ModelWeights
+    from hyperflare_recipes.recipes.qwen38_dense.bootstrap import _declared_weight_roots
 
     dense = qwen_dense_weights()
     weights = ModelWeights(config=None, tree=dense.tree, projections=dense.projections, head=dense.head,

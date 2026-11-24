@@ -24,7 +24,7 @@ POISON = 0x55
 
 
 def small_config():
-    from ignition.recipes.qwen38_dense.dspark_config import DSparkConfig
+    from hyperflare_recipes.recipes.qwen38_dense.dspark_config import DSparkConfig
 
     draft = DSparkConfig(dict(hidden_size=HIDDEN, intermediate_size=INTERMEDIATE, vocab_size=VOCABULARY,
         num_hidden_layers=LAYERS, num_attention_heads=HEADS, num_key_value_heads=KV_HEADS, head_dim=HEAD,
@@ -36,9 +36,9 @@ def small_config():
 
 @pytest.fixture(scope="module")
 def weights():
-    from ignition.components.dflash2_weights import DraftLayerWeights, DraftWeights
-    from ignition.components.parallel import TensorParallelShard
-    from ignition.components.weights import MLPWeights
+    from hyperflare_recipes.components.dflash2_weights import DraftLayerWeights, DraftWeights
+    from hyperflare_recipes.components.parallel import TensorParallelShard
+    from hyperflare_recipes.components.weights import MLPWeights
 
     generator = torch.Generator(device="cuda").manual_seed(8191)
 
@@ -63,7 +63,7 @@ class Pages:
     """Draft page regions as the dense pool exposes them, filled with a byte no writer produces by default."""
 
     def __init__(self):
-        from ignition.recipes.qwen38_dense.dspark_config import PAGE_DTYPE
+        from hyperflare_recipes.recipes.qwen38_dense.dspark_config import PAGE_DTYPE
 
         self.dtype = PAGE_DTYPE
         self.regions = [tuple(torch.full((PAGES, 128, KV_HEADS, HEAD), POISON, dtype=torch.uint8, device="cuda")
@@ -82,7 +82,7 @@ class Pages:
 
 
 def metadata(tokens, rows=1, samples=None):
-    from ignition.components.paged_batch import Metadata
+    from hyperflare_recipes.components.paged_batch import Metadata
 
     return Metadata.allocate(tokens, rows, BLOCKS, "cuda", samples=samples)
 
@@ -127,9 +127,9 @@ class Harness:
     """Context writers for a prefill chunk, an eight-token round and a one-token round, and a proposal block."""
 
     def __init__(self, weights, session, arena, *, chunk):
-        from ignition.components.dflash2 import DraftScratch
-        from ignition.recipes.kimi3.dspark import PreparedMarkov
-        from ignition.recipes.qwen38_dense.dspark import PreparedDraft, prepared_context
+        from hyperflare_recipes.components.dflash2 import DraftScratch
+        from hyperflare_recipes.recipes.kimi3.dspark import PreparedMarkov
+        from hyperflare_recipes.recipes.qwen38_dense.dspark import PreparedDraft, prepared_context
 
         self.pages = Pages()
         self.contexts = {}

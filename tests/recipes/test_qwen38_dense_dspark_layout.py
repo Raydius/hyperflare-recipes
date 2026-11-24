@@ -10,11 +10,11 @@ from pathlib import Path
 import pytest
 import torch
 
-from ignition.recipes import resolve
-from ignition.recipes.qwen38_dense import draft_config, dspark_config
-from ignition.recipes.qwen38_dense.bootstrap import PreparationConfig
-from ignition.recipes.qwen38_dense.config import ModelConfig
-from ignition.recipes.qwen38_dense.pool import ContinuationPool, continuation_layout, page_bytes, page_specs
+from hyperflare_recipes.recipes import resolve
+from hyperflare_recipes.recipes.qwen38_dense import draft_config, dspark_config
+from hyperflare_recipes.recipes.qwen38_dense.bootstrap import PreparationConfig
+from hyperflare_recipes.recipes.qwen38_dense.config import ModelConfig
+from hyperflare_recipes.recipes.qwen38_dense.pool import ContinuationPool, continuation_layout, page_bytes, page_specs
 
 from .test_qwen38_dense_dflash import DRAFT_CONFIG
 from .test_qwen38_dense_dspark_config import DSPARK_CONFIG
@@ -100,7 +100,7 @@ def test_dspark_preparation_refuses_more_than_seven_draft_tokens():
 def test_feature_capture_keeps_every_prefill_position_for_an_unwindowed_draft():
     from types import SimpleNamespace
 
-    from ignition.components.dflash2 import PreparedContextCapture
+    from hyperflare_recipes.components.dflash2 import PreparedContextCapture
 
     metadata = SimpleNamespace(positions=torch.empty(4096, dtype=torch.int64, device="meta"),
                                starts=torch.empty(1, dtype=torch.int64, device="meta"))
@@ -113,10 +113,10 @@ def test_feature_capture_keeps_every_prefill_position_for_an_unwindowed_draft():
 def test_dspark_owner_sizes_a_seven_position_block_scored_from_the_pending_token(target):
     from types import SimpleNamespace
 
-    from ignition.components.parallel import TensorParallelShard
+    from hyperflare_recipes.components.parallel import TensorParallelShard
     from ignition.components.sampling import DeviceRequestState
-    from ignition.recipes.kimi3.dspark import PreparedMarkov
-    from ignition.recipes.qwen38_dense import dspark
+    from hyperflare_recipes.recipes.kimi3.dspark import PreparedMarkov
+    from hyperflare_recipes.recipes.qwen38_dense import dspark
 
     config = replace(target, draft=dspark_config.from_dict(copy.deepcopy(DSPARK_CONFIG), target))
     pool = ContinuationPool.for_model(config, 3, 2, "meta", mtp=True)
@@ -139,7 +139,7 @@ def test_dspark_owner_sizes_a_seven_position_block_scored_from_the_pending_token
 
 
 def test_rope_scaling_raises_the_preparation_context_ceiling():
-    from ignition.recipes.declaration import RopeScaling
+    from ignition.declaration import RopeScaling
 
     options = dict(draft_snapshot=Path("draft"), speculative_method="dspark", max_active=8,
                    speculative_widths=tuple(range(1, 9)))
@@ -154,7 +154,7 @@ def test_rope_scaling_raises_the_preparation_context_ceiling():
 
 
 def test_scaled_target_frequencies_interpolate_only_the_slow_pairs():
-    from ignition.components.rotary import interpolated_frequencies
+    from hyperflare_recipes.components.rotary import interpolated_frequencies
 
     native = 1.0 / (10000000 ** (torch.arange(0, 64, 2, dtype=torch.float32) / 64))
     scaled = interpolated_frequencies(10000000, 32, 4., 262144, 32., 1., "cpu")

@@ -369,7 +369,7 @@ def test_daisyrose_resolves_to_its_pinned_dense_qwen_checkpoint():
 
 def test_daisyrose_yarn4_extends_the_dense_qwen_context_by_rope_scaling():
     from ignition.cli.preparation import rope_scaled
-    from ignition.recipes.declaration import RopeScaling
+    from ignition.declaration import RopeScaling
 
     model = resolve("daisyrose-27b-yarn4")
     base = resolve("daisyrose-27b")

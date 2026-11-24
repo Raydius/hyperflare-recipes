@@ -7,7 +7,7 @@
 import pytest
 
 from ignition.preparation.quantization import matches_pattern, modelopt_nvfp4_layers
-from ignition.recipes.gemma4.config import ModelConfig, _candidate_linear_names
+from hyperflare_recipes.recipes.gemma4.config import ModelConfig, _candidate_linear_names
 from tests.recipes.test_gemma4 import _dense_31b_raw
 
 NVFP4_ENTRY = {"quant_algo": "NVFP4", "group_size": 16}

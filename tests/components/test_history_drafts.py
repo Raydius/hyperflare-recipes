@@ -5,9 +5,9 @@ import torch
 
 from tests.components.completion_support import RecordOnlyLogprobs, completion_outputs
 
-from ignition.components.parallel_draft import allocate_copy_buffers, substitute_copies
-from ignition.components.speculation import PreparedSpeculativeCommit, SpeculativeAcceptance
-from ignition.recipes.qwen38.sampling import DeviceRequestState, RequestAdmission
+from hyperflare_recipes.components.parallel_draft import allocate_copy_buffers, substitute_copies
+from hyperflare_recipes.components.speculation import PreparedSpeculativeCommit, SpeculativeAcceptance
+from hyperflare_recipes.recipes.qwen38.sampling import DeviceRequestState, RequestAdmission
 
 VOCAB = 32
 
@@ -15,7 +15,7 @@ VOCAB = 32
 @pytest.fixture(autouse=True)
 def records_only_cpu_commit(monkeypatch):
     # CPU record tests; the logprob reduction has independent CUDA coverage.
-    monkeypatch.setattr("ignition.components.speculation.PreparedLogprobs", RecordOnlyLogprobs)
+    monkeypatch.setattr("hyperflare_recipes.components.speculation.PreparedLogprobs", RecordOnlyLogprobs)
 
 
 def round_tensors(batch, width, token=21):

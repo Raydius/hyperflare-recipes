@@ -7,7 +7,7 @@ Elephant-1's eight full-attention layers were trained with a two-block mask: a t
 whole block and to every earlier block. This probe answers two questions before anything is built.
 
   operator  whether b12x variable-length attention, the operator behind
-            `ignition.components.varlen_attention`, runs noncausally at the model's geometry
+            `hyperflare_recipes.components.varlen_attention`, runs noncausally at the model's geometry
             (16 query heads, 4 key-value heads, head dimension 256, BF16) for a question suffix
             attending to the prefix and itself, and for a whole prefix attending to itself. Each
             output is compared with PyTorch `scaled_dot_product_attention` in FP32 over the same
@@ -79,12 +79,12 @@ def _tensor_bytes(value):
 
 
 def _storage(checkpoint):
-    from ignition.components.paged_batch import BatchInputs
-    from ignition.components.prompt_logprobs import PromptOutputs
-    from ignition.recipes.elephant1.attention import SEGMENTS
-    from ignition.recipes.elephant1.config import PAGE_TOKENS, TRAINED_CONTEXT, ModelConfig
-    from ignition.recipes.elephant1.pool import page_bytes
-    from ignition.recipes.qwen38_dense.decoder import Scratch
+    from hyperflare_recipes.components.paged_batch import BatchInputs
+    from hyperflare_recipes.components.prompt_logprobs import PromptOutputs
+    from hyperflare_recipes.recipes.elephant1.attention import SEGMENTS
+    from hyperflare_recipes.recipes.elephant1.config import PAGE_TOKENS, TRAINED_CONTEXT, ModelConfig
+    from hyperflare_recipes.recipes.elephant1.pool import page_bytes
+    from hyperflare_recipes.recipes.qwen38_dense.decoder import Scratch
 
     config, cpu = ModelConfig.load(checkpoint), torch.device("cpu")
     headroom = ENVELOPE_BYTES - SERVING_PROCESS_BYTES

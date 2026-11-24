@@ -6,8 +6,8 @@
 import pytest
 import torch
 
-from ignition.recipes.muse_glimmer_nvfp4.bootstrap import PreparationConfig
-from ignition.recipes.muse_glimmer_nvfp4.recipe import RECIPE
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.bootstrap import PreparationConfig
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.recipe import RECIPE
 
 
 def test_defaults_are_the_single_gpu_text_only_declaration():
@@ -82,7 +82,7 @@ def test_recipe_prepare_runs_in_process_on_one_gpu(monkeypatch, tmp_path):
     from types import SimpleNamespace
 
     captured = {}
-    monkeypatch.setitem(sys.modules, "ignition.recipes.muse_glimmer_nvfp4.bootstrap", SimpleNamespace(
+    monkeypatch.setitem(sys.modules, "hyperflare_recipes.recipes.muse_glimmer_nvfp4.bootstrap", SimpleNamespace(
         PreparationConfig=lambda **options: SimpleNamespace(**options),
         prepare=lambda snapshot, config, **options: captured.update(config=config, **options) or config))
     plan = SimpleNamespace(world_size=1, speculation=None, prompt_logprobs=False, compile_workers=None,
@@ -148,5 +148,5 @@ def test_recipe_passes_only_keywords_its_components_accept(name):
     """
     import importlib
 
-    assert not _unaccepted_keywords(importlib.import_module("ignition.recipes.muse_glimmer_nvfp4." + name))
+    assert not _unaccepted_keywords(importlib.import_module("hyperflare_recipes.recipes.muse_glimmer_nvfp4." + name))
 

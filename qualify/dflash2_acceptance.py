@@ -141,7 +141,7 @@ class LayerTap:
 
 def canonical_reference(args, layer_output):
     from ignition.preparation import inspect_qwen38_checkpoint
-    from ignition.reference.qwen38_decoder import CanonicalTextReference
+    from hyperflare_recipes.reference.qwen38_decoder import CanonicalTextReference
 
     dev = device()
     manifest = inspect_qwen38_checkpoint(args.snapshot)
@@ -151,7 +151,7 @@ def canonical_reference(args, layer_output):
 
 
 def trace(args, *, reference_factory=None):
-    from ignition.preparation.qwen38 import MODEL_ID as CHECKPOINT_ID, REVISION
+    from hyperflare_recipes.recipes.qwen38.checkpoint_schema import MODEL_ID as CHECKPOINT_ID, REVISION
 
     document = json.loads(Path(args.tokens).read_text())
     folder = args.output / 'traces'
@@ -220,8 +220,8 @@ def load_traces(folder):
 def target_tensors(args, dev):
     """The target's BF16 embedding and head through the exact-checkpoint reader, without the native loader."""
     from ignition.preparation import inspect_qwen38_checkpoint
-    from ignition.preparation.qwen38 import TEXT_PREFIX
-    from ignition.reference.qwen38_quant import CheckpointTensors
+    from hyperflare_recipes.recipes.qwen38.checkpoint_schema import TEXT_PREFIX
+    from hyperflare_recipes.reference.qwen38_quant import CheckpointTensors
 
     with CheckpointTensors(inspect_qwen38_checkpoint(args.snapshot), byte_budget=4 << 30) as reader:
         return (reader.read(f'{TEXT_PREFIX}.embed_tokens.weight').to(dev, torch.bfloat16),
@@ -230,7 +230,7 @@ def target_tensors(args, dev):
 
 @contextmanager
 def dflash2_arm(args, traces, dev, target):
-    from ignition.reference.qwen38_dflash2 import DFlash2Reference
+    from hyperflare_recipes.reference.qwen38_dflash2 import DFlash2Reference
 
     draft = DFlash2Reference.load(args.draft, dev)
     embedding, head = target
@@ -264,9 +264,9 @@ def mtp_arm(args, traces, dev, target):
 
     from ignition.preparation import inspect_qwen38_checkpoint
     from ignition.preparation.scratch import ScratchArena
-    from ignition.recipes.qwen38.attention import QSAMetadata, QSAState, RotaryTables
-    from ignition.recipes.qwen38.mtp import MTPScratch, PreparedMTP
-    from ignition.recipes.qwen38.mtp_weights import MTPWeights
+    from hyperflare_recipes.recipes.qwen38.attention import QSAMetadata, QSAState, RotaryTables
+    from hyperflare_recipes.recipes.qwen38.mtp import MTPScratch, PreparedMTP
+    from hyperflare_recipes.recipes.qwen38.mtp_weights import MTPWeights
 
     embedding, head = target
     weights = MTPWeights.load(inspect_qwen38_checkpoint(args.snapshot), dev,

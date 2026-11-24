@@ -220,7 +220,7 @@ def prepare(snapshot, config, *, progress=None, core_storage):
         from .dflash import SpeculativePreparation
         speculation = SpeculativePreparation(weights, pool, requests, inputs, completion=completion, frame=frame,
             sequence=sequence, session=session, workspace=arena, coordinator=coordinator, examples=examples)
-        from ignition.components.parallel_draft import allocate_copy_buffers
+        from hyperflare_recipes.components.parallel_draft import allocate_copy_buffers
         speculation.copy_buffers = allocate_copy_buffers(requests.capacity, device)
         buffers.update(speculation.copy_buffers)
     modes = (drafting,) if config.benchmark_selection is not None else serving_modes(drafting, config.mtp_only)

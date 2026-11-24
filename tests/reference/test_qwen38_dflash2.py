@@ -7,7 +7,7 @@ import copy
 import pytest
 import torch
 
-from ignition.reference.qwen38_dflash2 import (
+from hyperflare_recipes.reference.qwen38_dflash2 import (
     PINNED,
     DFlash2Reference,
     grouped_convolve,
@@ -200,7 +200,7 @@ cuda = pytest.mark.skipif(os.environ.get("FLARE_RUN_CUDA_TESTS") != "1", reason=
 @cuda
 @torch.no_grad()
 def test_cuda_convolution_matches_triton_component():
-    from ignition.components.grouped_convolution import _convolve
+    from hyperflare_recipes.components.grouped_convolution import _convolve
 
     torch.manual_seed(7)
     rows, hidden, group, block = 16, 2560, 16, 8
@@ -219,7 +219,7 @@ def test_cuda_convolution_matches_triton_component():
 @torch.no_grad()
 def test_cuda_walk_matches_candidate_selector_component():
     from b12x.preparation import PreparationSession
-    from ignition.components.candidate_selector import PreparedCandidateSelector
+    from hyperflare_recipes.components.candidate_selector import PreparedCandidateSelector
 
     config = _small_config()
     config.update(hidden_size=256, vocab_size=1024)

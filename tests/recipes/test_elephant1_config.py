@@ -7,9 +7,9 @@ import copy
 
 import pytest
 
-from ignition.recipes.elephant1.config import TEXT_PREFIX, ModelConfig
-from ignition.recipes.elephant1.pool import continuation_layout, page_bytes
-from ignition.recipes.elephant1.recipe import RECIPE
+from hyperflare_recipes.recipes.elephant1.config import TEXT_PREFIX, ModelConfig
+from hyperflare_recipes.recipes.elephant1.pool import continuation_layout, page_bytes
+from hyperflare_recipes.recipes.elephant1.recipe import RECIPE
 
 # baselabs/elephant-1 @ b3f8a934 config.json, trimmed to the fields the recipe reads.
 CONFIG = {

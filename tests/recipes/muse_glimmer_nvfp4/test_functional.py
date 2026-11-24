@@ -14,9 +14,9 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from ignition.components.paged_batch import Metadata
-from ignition.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder
-from ignition.recipes.muse_glimmer_nvfp4.attention import PAGE_TOKENS, PreparedAttention
+from hyperflare_recipes.components.paged_batch import Metadata
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.attention import PAGE_TOKENS, PreparedAttention
 
 HEADS, KV_HEADS, DIM = 2, 1, 4
 WIDTHS = (HEADS * DIM, KV_HEADS * DIM, KV_HEADS * DIM, HEADS * DIM)

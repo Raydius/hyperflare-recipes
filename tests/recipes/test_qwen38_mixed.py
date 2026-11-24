@@ -194,8 +194,8 @@ def test_image_validation_precedes_prompt_state_gather(speculative):
 @pytest.mark.parametrize("drafting", [False, True])
 def test_residual_checkpoint_follows_the_target_residual_region(drafting, monkeypatch):
     """The checkpoint feeds the MTP draft: a layout with the MTP regions compiles it, one without them does not."""
-    from ignition.recipes.qwen38 import decoder_state
-    from ignition.recipes.qwen38.state import HybridStateLayout
+    from hyperflare_recipes.recipes.qwen38 import decoder_state
+    from hyperflare_recipes.recipes.qwen38.state import HybridStateLayout
 
     compiled = []
     monkeypatch.setattr(decoder_state, "compile_kernel", lambda kernel, args, grid: compiled.append(kernel) or kernel)
@@ -217,9 +217,9 @@ def test_residual_checkpoint_follows_the_target_residual_region(drafting, monkey
 @pytest.mark.parametrize("prompt_row", [-1, 1])
 def test_packed_hidden_and_residual_gather_per_role(prompt_row):
     """finish_runtime() hands each role only its own tokens' hidden and residual rows."""
-    from ignition.components.recurrent import DeltaMetadata
-    from ignition.recipes.qwen38.mixed_state import FunctionalStatePartition, MixedScratch, PreparedMixedState
-    from ignition.recipes.qwen38.ple import PLEMetadata
+    from hyperflare_recipes.components.recurrent import DeltaMetadata
+    from hyperflare_recipes.recipes.qwen38.mixed_state import FunctionalStatePartition, MixedScratch, PreparedMixedState
+    from hyperflare_recipes.recipes.qwen38.ple import PLEMetadata
 
     batch, width, prefill, length = 4, 3, 16, 5
     tokens = prefill + (batch - 1) * width

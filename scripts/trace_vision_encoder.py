@@ -76,7 +76,7 @@ def provenance(manifest):
     files = [ROOT / name for name in (
         "scripts/trace_vision_encoder.py", "tests/recipes/test_qwen38_vision.py",
         "hyperflare_recipes/recipes/qwen38/vision.py", "ignition/components/linear.py",
-        "hyperflare_recipes/recipes/qwen38/weights.py", "ignition/reference/qwen38_quant.py",
+        "hyperflare_recipes/recipes/qwen38/weights.py", "hyperflare_recipes/reference/qwen38_quant.py",
     )]
     files += list(source_root.rglob("*.py")) + [Path(canonical.__file__)]
     return {

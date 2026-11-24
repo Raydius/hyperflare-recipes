@@ -534,7 +534,7 @@ def test_parallel_recipe_defaults_capture_ragged_rows_at_declared_width(alias, o
 
 
 def test_qwen_yarn_variant_extends_the_declared_serving_context(monkeypatch, tmp_path):
-    from ignition.recipes.qwen38.bootstrap import PreparationConfig
+    from hyperflare_recipes.recipes.qwen38.bootstrap import PreparationConfig
 
     native = resolve("qwen3.8-flash")
     scaled = resolve("qwen3.8-flash-yarn4")
@@ -555,7 +555,7 @@ def test_qwen_yarn_variant_extends_the_declared_serving_context(monkeypatch, tmp
                       reserve_bytes=0, speculation=scaled.recipe.speculation, prefill_chunk=1_048_640)
 
     seen = []
-    monkeypatch.setattr("ignition.recipes.qwen38.bootstrap.prepare_model",
+    monkeypatch.setattr("hyperflare_recipes.recipes.qwen38.bootstrap.prepare_model",
                         lambda snapshot, config, *, progress, compile_decoder: seen.append(config))
     scaled.recipe.prepare(tmp_path, extended, compile_forwards=True, kernel_cache=None, progress=None)
     config = seen.pop()
@@ -567,11 +567,11 @@ def test_nemotron_speculative_graphs_bind_copy_inputs_only_when_declared():
     """History copies opt in by listing the round owner's buffers on the speculative signature."""
     import torch
 
-    from ignition.components.parallel_draft import allocate_copy_buffers
+    from hyperflare_recipes.components.parallel_draft import allocate_copy_buffers
     from ignition.components.state import StateLayout
     from ignition.preparation import runtime_core_pb2 as p
     from ignition.preparation.execution import GraphSignature
-    from ignition.recipes.nemotron_h.contract import prepare
+    from hyperflare_recipes.recipes.nemotron_h.contract import prepare
 
     copies = allocate_copy_buffers(2, "cpu")
     pool = SimpleNamespace(layout=StateLayout.from_specs([("consumed_tokens", (1,), torch.int64)]), pages={})
@@ -595,7 +595,7 @@ def test_elephant1_adapter_configures_a_text_decision_core(monkeypatch, tmp_path
     assert (recipe.concurrency, recipe.max_concurrency, recipe.prefill_chunk) == (2, 4, 16384)
     assert recipe.speculation is None and recipe.max_draft_tokens == 0 and recipe.tensor_parallel == (1,)
     seen = []
-    monkeypatch.setattr("ignition.recipes.elephant1.bootstrap.prepare",
+    monkeypatch.setattr("hyperflare_recipes.recipes.elephant1.bootstrap.prepare",
                         lambda snapshot, config, *, progress, core_storage: seen.append(config) or "prepared")
     plan = fitted(model, 1, concurrency=recipe.concurrency, speculation=None, reserve_bytes=1 << 30)
     assert recipe.prepare(tmp_path, plan, compile_forwards=True, kernel_cache=tmp_path / "kernels",

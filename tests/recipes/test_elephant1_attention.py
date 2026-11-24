@@ -8,8 +8,8 @@ import os
 import pytest
 import torch
 
-from ignition.recipes.elephant1.attention import SEGMENTS, BlockAttention, block_segments, key_slots
-from ignition.recipes.elephant1.config import PAGE_TOKENS
+from hyperflare_recipes.recipes.elephant1.attention import SEGMENTS, BlockAttention, block_segments, key_slots
+from hyperflare_recipes.recipes.elephant1.config import PAGE_TOKENS
 
 
 def _distances(capacity, start, spans):
@@ -51,9 +51,9 @@ def test_key_slots_pack_both_segments_from_their_pages():
 @pytest.mark.skipif(os.environ.get("FLARE_RUN_CUDA_TESTS") != "1", reason="requires an assigned CUDA device")
 @torch.no_grad()
 def test_captured_block_attention_matches_the_block_mask():
-    from ignition.components.paged_attention import PreparedPagedAttention
-    from ignition.components.paged_batch import Metadata
-    from ignition.components.varlen_attention import PreparedVarlenAttention
+    from hyperflare_recipes.components.paged_attention import PreparedPagedAttention
+    from hyperflare_recipes.components.paged_batch import Metadata
+    from hyperflare_recipes.components.varlen_attention import PreparedVarlenAttention
     from ignition.preparation.compilation import compile_forward
     from ignition.preparation.scratch import ScratchArena
     from ignition.preparation.tuning import RecordedPreparationSession
@@ -158,8 +158,8 @@ def test_contract_declares_the_block_end_marker(monkeypatch):
     from google.protobuf import json_format
 
     from ignition.preparation import runtime_core_pb2 as p
-    from ignition.recipes.elephant1 import contract
-    from ignition.recipes.qwen38_dense.contract import FRONTEND
+    from hyperflare_recipes.recipes.elephant1 import contract
+    from hyperflare_recipes.recipes.qwen38_dense.contract import FRONTEND
 
     seen = {}
     monkeypatch.setattr(contract, "_prepare", lambda *args, **kwargs: seen.update(kwargs))

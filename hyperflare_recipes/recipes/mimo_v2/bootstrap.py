@@ -314,7 +314,7 @@ def prepare_rank(snapshot, config, *, rank, group, progress=None, core_storage=N
                 context_runtime=context_collective,
                 coordinator=coordinator,
             )
-            from ignition.components.parallel_draft import allocate_copy_buffers
+            from hyperflare_recipes.components.parallel_draft import allocate_copy_buffers
 
             speculation.copy_buffers = allocate_copy_buffers(requests.capacity, device)
             buffers.update(speculation.copy_buffers)

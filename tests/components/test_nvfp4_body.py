@@ -6,9 +6,9 @@
 import pytest
 import torch
 
-from ignition.components.weights import nvfp4_body_parts, pack_body_nvfp4
-from ignition.recipes.elephant1.config import ModelConfig
-from ignition.recipes.elephant1.weights import projection_plan
+from hyperflare_recipes.components.weights import nvfp4_body_parts, pack_body_nvfp4
+from hyperflare_recipes.recipes.elephant1.config import ModelConfig
+from hyperflare_recipes.recipes.elephant1.weights import projection_plan
 
 # baselabs/elephant-1 @ b3f8a934 config.json, trimmed to the fields the recipe reads.
 TEXT = {

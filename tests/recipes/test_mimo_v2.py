@@ -145,11 +145,11 @@ def test_attention_scratch_requires_shared_query_geometry():
 
 def test_speculative_graphs_bind_copy_inputs_only_when_declared():
     """History copies opt in by listing the round owner's buffers on the speculative signature."""
-    from ignition.components.parallel_draft import allocate_copy_buffers
+    from hyperflare_recipes.components.parallel_draft import allocate_copy_buffers
     from ignition.components.state import StateLayout
     from ignition.preparation import runtime_core_pb2 as p
     from ignition.preparation.execution import GraphSignature
-    from ignition.recipes.mimo_v2.contract import prepare
+    from hyperflare_recipes.recipes.mimo_v2.contract import prepare
 
     copies = allocate_copy_buffers(2, "cpu")
     assert copies["copy_token_ids"].shape == (2, 7) and int(copies["copy_token_count"].sum()) == 0

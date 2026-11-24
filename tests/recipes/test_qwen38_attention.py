@@ -109,7 +109,7 @@ def _text_config(max_position_embeddings=262144):
 
 
 def test_rotary_tables_interpolate_declared_rope_scaling():
-    from ignition.recipes.declaration import RopeScaling
+    from ignition.declaration import RopeScaling
 
     scaling = RopeScaling(4., 262144)
     config = _text_config()

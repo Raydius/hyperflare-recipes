@@ -346,8 +346,8 @@ def test_prepared_model_retains_persistent_storage_until_confirmed_drain(monkeyp
 
 
 def test_context_bound_requires_declared_rope_scaling_beyond_the_native_context():
-    from ignition.recipes.declaration import RopeScaling
-    from ignition.recipes.qwen38.bootstrap import PreparationConfig
+    from ignition.declaration import RopeScaling
+    from hyperflare_recipes.recipes.qwen38.bootstrap import PreparationConfig
 
     PreparationConfig(context=262144)
     with pytest.raises(ValueError, match="64-aligned in \[64,262,144\]"):
@@ -364,8 +364,8 @@ def test_context_bound_requires_declared_rope_scaling_beyond_the_native_context(
 
 
 def test_identity_separates_rope_scaling_preparations():
-    from ignition.recipes.declaration import RopeScaling
-    from ignition.recipes.qwen38.bootstrap import PreparationConfig, _identity
+    from ignition.declaration import RopeScaling
+    from hyperflare_recipes.recipes.qwen38.bootstrap import PreparationConfig, _identity
 
     manifest = SimpleNamespace(headers_sha256="headers", metadata_sha256={"config.json": "config"})
     native = _identity(manifest, config=PreparationConfig())

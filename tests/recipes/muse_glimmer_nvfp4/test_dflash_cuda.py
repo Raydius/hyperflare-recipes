@@ -146,15 +146,15 @@ def selector_walk(selector, projected, logits, pending, top_k):
 def test_width_16_round_proposes_the_dflash2_block():
     from b12x.preparation import PreparationSession
     from ignition.components.completion import CompletionOutputs, VECTOR_TOKENS_FIELD
-    from ignition.components.paged_batch import BatchInputs, Metadata
-    from ignition.components.parallel import TensorParallelShard
+    from hyperflare_recipes.components.paged_batch import BatchInputs, Metadata
+    from hyperflare_recipes.components.parallel import TensorParallelShard
     from ignition.components.sampling import DeviceRequestState, RequestAdmission
     from ignition.preparation.checkpoint import inspect_indexed_checkpoint
     from ignition.preparation.scratch import ScratchArena
-    from ignition.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder, Scratch
-    from ignition.recipes.muse_glimmer_nvfp4.dflash import SpeculativePreparation
-    from ignition.recipes.muse_glimmer_nvfp4.weights import ModelWeights
-    from ignition.recipes.muse_spark.pool import PAGE_TOKENS, ContinuationPool
+    from hyperflare_recipes.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder, Scratch
+    from hyperflare_recipes.recipes.muse_glimmer_nvfp4.dflash import SpeculativePreparation
+    from hyperflare_recipes.recipes.muse_glimmer_nvfp4.weights import ModelWeights
+    from hyperflare_recipes.recipes.muse_spark.pool import PAGE_TOKENS, ContinuationPool
 
     snapshot, draft_snapshot, selected = Path(SNAPSHOT), Path(DFLASH2_SNAPSHOT), device()
     ids = traced_prompt(snapshot)

@@ -95,8 +95,8 @@ def softcapped(hidden, head, config):
 
 def prefill(weights, pool, ids, selected, *, blocks, session, workspace, name):
     """Construct the prepared prefill of ``ids`` on state row 1 over pages ``0..blocks-1``."""
-    from ignition.components.paged_batch import Metadata
-    from ignition.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder, Scratch
+    from hyperflare_recipes.components.paged_batch import Metadata
+    from hyperflare_recipes.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder, Scratch
 
     tokens = len(ids)
     metadata = Metadata.allocate(tokens, 1, blocks, selected)
@@ -116,14 +116,14 @@ def prefill(weights, pool, ids, selected, *, blocks, session, workspace, name):
 @torch.no_grad()
 def test_prepared_prefill_and_decode_match_the_reference_across_the_window():
     from b12x.preparation import PreparationSession
-    from ignition.components.paged_batch import Metadata
-    from ignition.components.parallel import TensorParallelShard
+    from hyperflare_recipes.components.paged_batch import Metadata
+    from hyperflare_recipes.components.parallel import TensorParallelShard
     from ignition.preparation.checkpoint import inspect_indexed_checkpoint
     from ignition.preparation.scratch import ScratchArena
-    from ignition.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder, Scratch
-    from ignition.recipes.muse_glimmer_nvfp4.weights import ModelWeights
-    from ignition.recipes.muse_spark.pool import PAGE_TOKENS, ContinuationPool
-    from ignition.reference.muse_glimmer import Fp8History, text_logits
+    from hyperflare_recipes.recipes.muse_glimmer_nvfp4.decoder import PreparedDecoder, Scratch
+    from hyperflare_recipes.recipes.muse_glimmer_nvfp4.weights import ModelWeights
+    from hyperflare_recipes.recipes.muse_spark.pool import PAGE_TOKENS, ContinuationPool
+    from hyperflare_recipes.reference.muse_glimmer import Fp8History, text_logits
 
     snapshot, selected = Path(SNAPSHOT), device()
     ids = traced_prompt(snapshot)

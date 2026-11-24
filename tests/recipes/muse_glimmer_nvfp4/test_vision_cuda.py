@@ -24,7 +24,7 @@ from types import SimpleNamespace
 import pytest
 import torch
 
-from ignition.recipes.muse_glimmer_nvfp4.vision import (
+from hyperflare_recipes.recipes.muse_glimmer_nvfp4.vision import (
     PERCEPTION_NORM_EPS, PreparedVision, VisionMetadata, VisionScratch, VisionWeights, window_capacity,
 )
 from tests.recipes.muse_glimmer_nvfp4.test_reference_cuda import CHECKPOINT, CUDA, SNAPSHOT, device as _device

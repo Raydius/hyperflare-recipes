@@ -118,7 +118,7 @@ def test_a_draft_folder_replaces_the_pinned_download(monkeypatch, tmp_path, name
 
     monkeypatch.setattr(huggingface_hub, "snapshot_download", download)
     prepare = lambda snapshot, config, **options: config
-    monkeypatch.setitem(sys.modules, f"ignition.recipes.{name}.bootstrap", SimpleNamespace(
+    monkeypatch.setitem(sys.modules, f"hyperflare_recipes.recipes.{name}.bootstrap", SimpleNamespace(
         PreparationConfig=lambda **options: SimpleNamespace(**options), prepare_model=prepare, prepare=prepare))
     config = recipe.prepare(tmp_path / "target", plan, compile_forwards=True, kernel_cache=None, progress=None)
     assert getattr(config, field) == folder
@@ -166,7 +166,7 @@ def test_qwen38_dflash2_loads_a_draft_folder_or_the_pinned_download(monkeypatch,
     import huggingface_hub
 
     from ignition.errors import UsageError
-    from ignition.recipes.qwen38 import draft_config
+    from hyperflare_recipes.recipes.qwen38 import draft_config
 
     monkeypatch.setenv("HOME", str(tmp_path))
     folder = _draft_folder(tmp_path, "config.json", "model.safetensors")
@@ -188,7 +188,7 @@ def test_qwen38_dflash2_loads_a_draft_folder_or_the_pinned_download(monkeypatch,
 
     monkeypatch.setattr(huggingface_hub, "snapshot_download", download)
     prepare = lambda snapshot, config, **options: config
-    monkeypatch.setitem(sys.modules, "ignition.recipes.qwen38.bootstrap", SimpleNamespace(
+    monkeypatch.setitem(sys.modules, "hyperflare_recipes.recipes.qwen38.bootstrap", SimpleNamespace(
         PreparationConfig=lambda **options: SimpleNamespace(**options), prepare_model=prepare, prepare_rank=prepare))
 
     def prepared(plan):
@@ -225,7 +225,7 @@ def test_dense_qwen_loads_the_draft_its_method_pins_or_a_dspark_draft_folder(mon
     import huggingface_hub
 
     from ignition.errors import UsageError
-    from ignition.recipes.qwen38_dense import draft_config, dspark_config
+    from hyperflare_recipes.recipes.qwen38_dense import draft_config, dspark_config
 
     monkeypatch.setenv("HOME", str(tmp_path))
     folder = _draft_folder(tmp_path, "config.json", "model.safetensors")
@@ -238,7 +238,7 @@ def test_dense_qwen_loads_the_draft_its_method_pins_or_a_dspark_draft_folder(mon
         return str(pinned)
 
     monkeypatch.setattr(huggingface_hub, "snapshot_download", download)
-    monkeypatch.setitem(sys.modules, "ignition.recipes.qwen38_dense.bootstrap", SimpleNamespace(
+    monkeypatch.setitem(sys.modules, "hyperflare_recipes.recipes.qwen38_dense.bootstrap", SimpleNamespace(
         PreparationConfig=lambda **options: SimpleNamespace(**options),
         prepare=lambda snapshot, config, **options: config))
 

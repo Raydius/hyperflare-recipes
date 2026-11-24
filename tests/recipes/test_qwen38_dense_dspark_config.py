@@ -12,7 +12,7 @@ import pytest
 import torch
 
 from ignition.preparation.checkpoint import IndexedCheckpoint, TensorMetadata
-from ignition.recipes.qwen38_dense import dspark_config, dspark_weights
+from hyperflare_recipes.recipes.qwen38_dense import dspark_config, dspark_weights
 
 # config.json of RadixArk/Qwen3.8-27B-DSpark at revision b9a5dbdf03bc999c6c73c426b19c2d9041cea393.
 _NESTED = {'attention_mode': 'gqa',
@@ -211,7 +211,7 @@ def test_published_header_maps_completely():
     assert dspark_weights.tensor_shapes(draft) == PUBLISHED_SHAPES
     dspark_weights.validate_metadata(header(), draft)
     # Every tensor outside the confidence head is read by the loader's prefix selection.
-    from ignition.components.dflash2_weights import _LOADED_PREFIXES
+    from hyperflare_recipes.components.dflash2_weights import _LOADED_PREFIXES
 
     unread = {name for name in PUBLISHED_SHAPES if not name.startswith(_LOADED_PREFIXES["dspark"])}
     assert unread == {"confidence_head.proj.weight", "confidence_head.proj.bias"}
@@ -253,8 +253,8 @@ def test_non_bf16_tensor_is_rejected():
 
 
 def test_rebuild_manifest_names_every_draft_weight():
-    from ignition.components.dflash2_weights import DraftLayerWeights, DraftWeights
-    from ignition.components.weights import MLPWeights
+    from hyperflare_recipes.components.dflash2_weights import DraftLayerWeights, DraftWeights
+    from hyperflare_recipes.components.weights import MLPWeights
     from ignition.preparation.rebuild_manifest import declare_weights, declared_views
 
     def tensor():
@@ -290,7 +290,7 @@ def test_published_checkpoint_header_and_configuration_validate():
 def test_load_fuses_projections_and_stacks_context_rows(tmp_path):
     from safetensors.torch import save_file
 
-    from ignition.components.parallel import TensorParallelShard
+    from hyperflare_recipes.components.parallel import TensorParallelShard
 
     small = dspark_config.DSparkConfig({**published(), "hidden_size": 128, "intermediate_size": 256,
         "num_attention_heads": 4, "num_key_value_heads": 2, "head_dim": 32, "vocab_size": 256, "markov_rank": 16})
