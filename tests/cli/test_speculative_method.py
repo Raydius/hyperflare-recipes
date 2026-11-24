@@ -95,16 +95,15 @@ def test_a_method_limits_its_own_draft_tokens_beside_the_recipe_limit(monkeypatc
         chosen("--mtp-draft-tokens", "16")
     assert model.recipe.draft_token_limit("dspark") == 7
     assert model.recipe.draft_token_limit("dflash2") == 15
-    monkeypatch.setattr(cli_help, "recipes", lambda: (model.recipe,))
-    assert "--mtp-draft-tokens: 0..7; default 7" in cli_help.recipe_help("qwen3.8-27b", "dspark")
-    assert "--mtp-draft-tokens: 0..15; default 7" in cli_help.recipe_help("qwen3.8-27b")
-    assert "--speculative-method: dflash2, dspark; default dflash2" in cli_help.recipe_help("qwen3.8-27b")
+    recipes = (model.recipe,)
+    assert "--mtp-draft-tokens: 0..7; default 7" in cli_help.recipe_help("qwen3.8-27b", "dspark", recipes=recipes)
+    assert "--mtp-draft-tokens: 0..15; default 7" in cli_help.recipe_help("qwen3.8-27b", recipes=recipes)
 
 
 def test_a_recipe_without_the_method_refuses_dspark():
     with pytest.raises(UsageError, match="--speculative-method dspark: qwen3.8-flash does not prepare this proposal method"):
         selected("--speculative-method", "dspark")
-    with pytest.raises(ValueError, match="mtp, dflash2 or dspark"):
+    with pytest.raises(ValueError, match="mtp, dspark or dflash2"):
         Speculation(draft_tokens=1, method="dsparkle")
 
 

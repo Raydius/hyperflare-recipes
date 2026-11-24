@@ -626,7 +626,7 @@ def test_language_model_only_overrides_configured_image_capacity(monkeypatch, tm
     from ignition.preparation import host_ranks
 
     model = resolve('glm-5.3-flash')
-    monkeypatch.setattr(serve, 'resolve_model', lambda configuration, name: model)
+    monkeypatch.setattr(serve, 'resolve_model', lambda configuration, name, rope_parameters=None, recipe_name=None: model)
     monkeypatch.setattr(ResolvedModel, 'cached', lambda self, hub_cache: True)
     monkeypatch.delenv('CUDA_VISIBLE_DEVICES', raising=False)
     gpu = planning.Gpu(0, 'NVIDIA GB300', 'GPU-0000', 288 * GIB, 288 * GIB, (10, 3))

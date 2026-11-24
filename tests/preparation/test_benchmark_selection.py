@@ -92,7 +92,9 @@ def test_prefill_plan_and_recipe_accept_no_decode_catalog(mtp):
     with pytest.raises(ValueError, match="match"):
         replace(config, prefill_chunk_size=4096)
     with pytest.raises(UsageError, match="prepared context"):
-        replace(plan, recipe=replace(plan.recipe, context=6144))
+        # Rope-scaled checkpoints extend the native context, so a shrunken recipe keeps only native ones.
+        replace(plan, recipe=replace(plan.recipe, context=6144, checkpoints=tuple(
+            checkpoint for checkpoint in plan.recipe.checkpoints if checkpoint.rope_scaling is None)))
     with pytest.raises(UsageError, match="match"):
         replace(plan, prefill_chunk=4096)
 

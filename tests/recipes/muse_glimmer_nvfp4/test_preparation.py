@@ -88,7 +88,7 @@ def test_recipe_prepare_runs_in_process_on_one_gpu(monkeypatch, tmp_path):
     plan = SimpleNamespace(world_size=1, speculation=None, prompt_logprobs=False, compile_workers=None,
         collective_tuning="static", collective_ladder=None,
         autotune_effort="off", tuning_replica=None, native_dense_activations=False, lock_gpu_clocks=True,
-        context=131072, concurrency=4, prefill_chunk=4096, snapshots=2, costs=SimpleNamespace(state_row_bytes=1 << 20),
+        context=131072, declared_context=131072, concurrency=4, prefill_chunk=4096, snapshots=2, costs=SimpleNamespace(state_row_bytes=1 << 20),
         headroom_bytes=1 << 30, reserve_bytes=1 << 30, language_model_only=False, image_concurrency=2, hub_cache=tmp_path)
     storage = object()
     # Serving and benchmarking call prepare(..., core_storage=...); the recipe forwards it to its bootstrap.

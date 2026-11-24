@@ -332,7 +332,7 @@ def test_rope_parameters_refuse_recipes_without_rope_scaling():
 
 
 def test_rope_parameters_reach_bench_and_are_refused_without_rope_scaling(tmp_path, capsys):
-    from ignition.cli import main
+    from hyperflare_recipes.cli import main
 
     config = tmp_path / "config.toml"
     config.write_text("")

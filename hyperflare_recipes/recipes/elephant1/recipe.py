@@ -25,7 +25,8 @@ def prepare(snapshot, plan, *, compile_forwards, kernel_cache, progress, retain_
         tuning_replica=plan.tuning_replica,
         collective_tuning=plan.collective_tuning, collective_ladder=plan.collective_ladder,
         lock_gpu_clocks=plan.lock_gpu_clocks and plan.autotune_effort != "off",
-        max_active=plan.concurrency, context=plan.context, prefill_chunk_size=plan.prefill_chunk,
+        native_dense_activations=plan.native_dense_activations,
+        max_active=plan.concurrency, context=plan.declared_context, prefill_chunk_size=plan.prefill_chunk,
         snapshot_budget_bytes=plan.snapshots * plan.costs.state_row_bytes,
         headroom_bytes=plan.headroom_bytes + plan.reserve_bytes, compile_decoder=compile_forwards,
         retain_graphs=retain_graphs, kernel_cache=kernel_cache)

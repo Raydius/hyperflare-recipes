@@ -22,6 +22,7 @@ from hyperflare_recipes.components.paged_maintenance import PreparedMaintenance
 from hyperflare_recipes.components.paged_resume import PreparedResume
 from ignition.components.sampling import AdmissionBuffers, DeviceRequestState
 from ignition.components.state_transfer import StateCommands
+from ignition.preparation.bootstrap import BasePreparationConfig
 from ignition.preparation.capture import capture_forwards
 from ignition.preparation.rebuild_manifest import declare_weights
 from ignition.preparation.checkpoint import inspect_indexed_checkpoint
@@ -47,23 +48,12 @@ from .weights import ModelWeights
 
 
 @dataclass(frozen=True)
-class PreparationConfig:
-    collective_tuning: str = "static"
-    collective_ladder: dict | None = None
+class PreparationConfig(BasePreparationConfig):
     prompt_logprobs: bool = False
-    compile_workers: int | None = None
-    lock_gpu_clocks: bool = False
-    autotune_effort: str = "default"
-    tuning_replica: TuningReplica | None = None
     device: int = 0
     context: int = TRAINED_CONTEXT
     prefill_chunk_size: int = TRAINED_CONTEXT
     max_active: int = 2
-    snapshot_budget_bytes: int = 4 << 30
-    headroom_bytes: int = 4 << 30
-    compile_decoder: bool = True
-    retain_graphs: bool = False
-    kernel_cache: Path | None = None
 
     def __post_init__(self):
         if not PAGE_TOKENS <= self.context <= TRAINED_CONTEXT or self.context % PAGE_TOKENS:

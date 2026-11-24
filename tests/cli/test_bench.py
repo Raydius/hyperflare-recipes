@@ -33,7 +33,7 @@ def test_bench_plans_qwen_dense_text_only_and_rejects_image_concurrency(monkeypa
     gpus = (planning.Gpu(0, "NVIDIA RTX PRO 6000 Blackwell", "GPU-0000", 96 << 30, 90 << 30, (12, 0)),)
     monkeypatch.setattr(bench.Host, "discover", classmethod(lambda cls: Host(gpus, None)))
     monkeypatch.setattr(bench, "resolve_model",
-        lambda configuration, name: ResolvedModel(RECIPE, RECIPE.checkpoints[0]))
+        lambda configuration, name, rope_parameters=None, recipe_name=None: ResolvedModel(RECIPE, RECIPE.checkpoints[0]))
 
     class Planned(Exception):
         pass
@@ -68,7 +68,7 @@ def test_bench_leaves_non_qwen_dense_image_options_untouched(monkeypatch, tmp_pa
     gpus = tuple(planning.Gpu(index, "NVIDIA B200", f"GPU-{index}", 192 << 30, 188 << 30, (10, 0))
                  for index in range(16))
     monkeypatch.setattr(bench.Host, "discover", classmethod(lambda cls: Host(gpus, None)))
-    monkeypatch.setattr(bench, "resolve_model", lambda configuration, name: model)
+    monkeypatch.setattr(bench, "resolve_model", lambda configuration, name, rope_parameters=None, recipe_name=None: model)
 
     seen = {}
 

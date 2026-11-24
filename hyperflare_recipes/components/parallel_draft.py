@@ -84,6 +84,9 @@ class PreparedParallelDraftRound:
     it allocates no draft decoder, Markov projection, or proposal samplers.
     """
 
+    # No history-draft copy inputs unless the owner allocated them.
+    copy_buffers = None
+
     def __init__(self, owner, batch, width, name, *, generate_proposals=True, proposal_only=False,
                  target_token_capacity=None, forwards=None, verification_dummy=None):
         self.owner, self.batch, self.width = owner, batch, width

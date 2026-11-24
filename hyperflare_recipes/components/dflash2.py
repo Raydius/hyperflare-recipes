@@ -114,6 +114,10 @@ class PreparedContext:
     geometry's plain rotary frequencies and unit gain.
     """
 
+    # Ring defaults; a paged draft history sets its own slot map and gain in __init__.
+    slots = None
+    gain = 1.0
+
     def __init__(self, weights, auxiliary, metadata, pool, *, session, name, workspace,
                  runtime, coordinator, compact_prefill=False, examples=None,
                  pages=None, slots=None, inverse=None, gain=1.0):

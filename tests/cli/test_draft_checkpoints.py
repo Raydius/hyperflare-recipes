@@ -269,13 +269,14 @@ def test_dense_qwen_dspark_costs_and_refusals(tmp_path):
 
     recipe, plan = _dense_qwen(tmp_path)
     dspark, dflash = plan("dspark"), plan("dflash2")
-    assert (dspark.costs.state_row_bytes, dspark.costs.page_bytes) == (166_340_864, 5_505_024)
-    assert (dflash.costs.state_row_bytes, dflash.costs.page_bytes) == (193_865_984, 4_194_304)
+    # The default dense plan prepares image slots, whose rows carry the 256-byte rotary-offset region.
+    assert (dspark.costs.state_row_bytes, dspark.costs.page_bytes) == (166_341_120, 5_505_024)
+    assert (dflash.costs.state_row_bytes, dflash.costs.page_bytes) == (193_866_240, 4_194_304)
     assert dflash.weights_bytes - dspark.weights_bytes == 3_953_666_560 - 3_714_705_920
     assert recipe.draft_token_limit("dspark") == 7 and recipe.draft_token_limit("dflash2") == 15
     with pytest.raises(UsageError, match="the DSpark draft uses the target's vocabulary head"):
         plan("dspark", draft_head_quantization="mxfp8")
-    with pytest.raises(UsageError, match="--draft-body-quantization: the DSpark draft keeps its checkpoint precision"):
+    with pytest.raises(UsageError, match="--draft-body-quantization requires --speculative-method dflash2"):
         plan("dspark", draft_body_quantization="mxfp8")
     study = BenchmarkSelection(batches=(1,), speculation_study=True)
     with pytest.raises(UsageError, match="speculation studies require Qwen3.8-27B DFlash2"):

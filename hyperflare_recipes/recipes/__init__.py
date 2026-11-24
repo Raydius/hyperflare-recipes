@@ -47,5 +47,5 @@ def aliases() -> tuple[str, ...]:
     return _aliases(recipes())
 
 
-def resolve(model: str, hub_cache: Path | None = None) -> ResolvedModel:
-    return _resolve(model, hub_cache, recipes=recipes())
+def resolve(model: str, hub_cache: Path | None = None, recipe_name: str | None = None) -> ResolvedModel:
+    return _resolve(model, hub_cache, recipe_name, recipes=recipes())

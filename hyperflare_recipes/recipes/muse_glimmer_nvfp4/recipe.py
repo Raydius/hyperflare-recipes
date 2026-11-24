@@ -36,7 +36,7 @@ def prepare(snapshot, plan, *, compile_forwards, kernel_cache, progress, retain_
         autotune_effort=plan.autotune_effort, tuning_replica=plan.tuning_replica,
         native_dense_activations=plan.native_dense_activations,
         lock_gpu_clocks=plan.lock_gpu_clocks and plan.autotune_effort != "off",
-        device=0, context=plan.context, max_active=plan.concurrency,
+        device=0, context=plan.declared_context, max_active=plan.concurrency,
         prefill_chunk_size=plan.prefill_chunk, snapshot_budget_bytes=plan.snapshots * plan.costs.state_row_bytes,
         headroom_bytes=plan.headroom_bytes + plan.reserve_bytes, compile_decoder=compile_forwards,
         retain_graphs=retain_graphs, kernel_cache=kernel_cache, language_model_only=plan.language_model_only,

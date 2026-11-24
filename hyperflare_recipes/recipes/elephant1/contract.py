@@ -17,4 +17,4 @@ BLOCK_END_TEXT = "</state>\n\n"
 
 def prepare(signatures, buffers, pool, *, vocabulary, block_end_marker):
     return _prepare(signatures, buffers, pool, vocabulary=vocabulary,
-                    frontend=dict(qwen_frontend(vision=False), block_end_marker=list(block_end_marker)))
+                    frontend_override=dict(qwen_frontend(vision=False), block_end_marker=list(block_end_marker)))
