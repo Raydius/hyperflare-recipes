@@ -35,7 +35,7 @@ override-dependencies = [
 torch = { index = "pytorch-cu132" }
 torchvision = { index = "pytorch-cu132" }
 # The fork builds on the core fork's deploy at an exact commit; FORK.md in that repository bumps it after each move.
-ignition = { git = "https://github.com/Raydius/flare-local-inference.git", rev = "c3cf996a28e3fa4e44ea4dba8b760a2a0ebe7285" }
+ignition = { git = "https://github.com/Raydius/flare-local-inference.git", rev = "6f910ba3d150c9197281747a163483d29ad644a2" }
 
 [tool.setuptools.packages.find]
 include = ["hyperflare_recipes*"]
