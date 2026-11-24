@@ -276,7 +276,7 @@ def test_dense_qwen_dspark_costs_and_refusals(tmp_path):
     assert recipe.draft_token_limit("dspark") == 7 and recipe.draft_token_limit("dflash2") == 15
     with pytest.raises(UsageError, match="the DSpark draft uses the target's vocabulary head"):
         plan("dspark", draft_head_quantization="mxfp8")
-    with pytest.raises(UsageError, match="--draft-body-quantization requires --speculative-method dflash2"):
+    with pytest.raises(UsageError, match="--draft-body-quantization mxfp8: daisyrose-27b does not prepare this draft body format"):
         plan("dspark", draft_body_quantization="mxfp8")
     study = BenchmarkSelection(batches=(1,), speculation_study=True)
     with pytest.raises(UsageError, match="speculation studies require Qwen3.8-27B DFlash2"):
