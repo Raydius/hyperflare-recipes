@@ -13,7 +13,7 @@ This is `Raydius/hyperflare-recipes`, a fork of
 `main` mirrors upstream unchanged; `deploy` carries the fork's recipe patches on upstream
 `07d7bb39` and installs `ignition` from the core fork
 [Raydius/flare-local-inference](https://github.com/Raydius/flare-local-inference) at
-`0efa58ce` (its `deploy`), whose `FORK.md` describes the two-repository workflow. The
+`c3cf996a` (its `deploy`), whose `FORK.md` describes the two-repository workflow. The
 FlashInfer source is the fork pin `Raydius/flashinfer@d73da5c4`: upstream's locked
 `0aa01681` plus two commits that reject unresolved planning stubs in compiler workers and
 route the MLA compress memo through the program cache; two of the fork's three eviction
