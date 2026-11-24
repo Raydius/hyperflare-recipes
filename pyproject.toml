@@ -25,11 +25,17 @@ name = "pytorch-cu132"
 url = "https://download.pytorch.org/whl/cu132"
 explicit = true
 
+[tool.uv]
+# The fork's FlashInfer replaces the one core ignition sources (upstream's main) for the whole environment.
+override-dependencies = [
+    "flashinfer-python[b12x] @ git+https://github.com/Raydius/flashinfer.git@d73da5c49b0f073cc78a3f30867a7f4b7cfbc030",
+]
+
 [tool.uv.sources]
 torch = { index = "pytorch-cu132" }
 torchvision = { index = "pytorch-cu132" }
-ignition = { git = "https://github.com/NVIDIA/hyperflare-inference.git", branch = "main" }
-flashinfer-python = { git = "https://github.com/local-inference-lab/flashinfer.git", branch = "main" }
+# The fork builds on the core fork's deploy at an exact commit; FORK.md in that repository bumps it after each move.
+ignition = { git = "https://github.com/Raydius/flare-local-inference.git", rev = "0efa58ce53f15f7666f00e1d6abad7d2f4464de1" }
 
 [tool.setuptools.packages.find]
 include = ["hyperflare_recipes*"]
@@ -47,6 +53,8 @@ include = ["hyperflare_recipes*"]
 "hyperflare_recipes.recipes.step5" = ["assets/*"]
 "hyperflare_recipes.recipes.muse_spark" = ["assets/*"]
 "hyperflare_recipes.recipes.minimax_m3" = ["assets/*"]
+"hyperflare_recipes.recipes.muse_glimmer_nvfp4" = ["assets/*"]
+"hyperflare_recipes.recipes.elephant1" = ["assets/*"]
 
 [tool.pytest.ini_options]
 addopts = "--import-mode=importlib"
