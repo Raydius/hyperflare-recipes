@@ -1,3 +1,56 @@
+# Raydius fork: recipe patch notes
+
+This fork carries local recipes and recipe changes on top of
+[local-inference-lab/hyperflare-recipes](https://github.com/local-inference-lab/hyperflare-recipes).
+It is the recipes half of the Raydius Flare fork; the core half is
+[Raydius/flare-local-inference](https://github.com/Raydius/flare-local-inference).
+
+- **Base:** upstream recipes `07d7bb3`, the last upstream recipes commit dated
+  before core's `v0.3.2` tag. `main` mirrors upstream unchanged and `deploy`
+  carries the fork's commits.
+- **Core commit:** `pyproject.toml` names `ignition` by the core fork's URL and
+  one exact commit, and `uv.lock` records it for `ignition` and
+  `flare-heliopause`. A release carries the same tag, `vMAJOR.MINOR.PATCH-rN`,
+  in both forks, and this fork's tagged commit locks the core fork's tagged commit.
+- **FlashInfer:** `Raydius/flashinfer` `d73da5c4`, which is
+  `local-inference-lab/flashinfer` `0aa01681` plus one commit.
+- **Workflow:** the core fork's
+  [FORK.md](https://github.com/Raydius/flare-local-inference/blob/deploy/FORK.md)
+  specifies the branch model, the mirror sync, and the move to a newer upstream
+  for both forks. Its
+  [README](https://github.com/Raydius/flare-local-inference/blob/deploy/README.md)
+  holds the full patch notes, including the core-side patches.
+- **Open checks:** [docs/TODO.txt](docs/TODO.txt).
+
+## Patches in this repository
+
+Each verdict is judged against upstream recipes `07d7bb3` installed with core
+`v0.3.2` (`c0c4f798`). "Kept" and "adapted" patches are absent from upstream;
+an adapted patch was also fitted to an upstream mechanism on this base.
+
+| Patch | Paths | Verdict |
+|---|---|---|
+| Muse Glimmer recipe `muse_glimmer_nvfp4` (alias `muse-glimmer-30b-nvfp4`) | `hyperflare_recipes/recipes/muse_glimmer_nvfp4/`, `hyperflare_recipes/reference/muse_glimmer.py` | Kept |
+| Elephant-1 recipe `elephant1` (alias `elephant-1-9b`) | `hyperflare_recipes/recipes/elephant1/`, `hyperflare_recipes/components/weights.py`, `gated_delta.py` | Adapted to upstream's dense Qwen decoder with image input |
+| Elephant-1 trained block mask, prepared side | `hyperflare_recipes/recipes/elephant1/attention.py`, `contract.py` | Kept |
+| DSpark drafting and DaisyRose-27B in the dense Qwen recipe (`--speculative-method dspark`, aliases `daisyrose-27b`, `daisyrose-27b-yarn4`) | `hyperflare_recipes/recipes/qwen38_dense/`, `hyperflare_recipes/components/dflash2_weights.py` | Adapted: the draft's Markov tensors are declared weight fields and the vision encoder is charged once, through `vision_bytes` |
+| Rope-scaled context for the dense Qwen recipe | `hyperflare_recipes/recipes/qwen38_dense/` | Adapted: the tuning identity takes the rope scaling |
+| `qwen3.8-flash-yarn4` and rope-scaled Flash Next rotary tables | `hyperflare_recipes/recipes/qwen38/` | Kept |
+| `--draft-model` for `qwen38` DFlash2 proposals | `hyperflare_recipes/recipes/qwen38/recipe.py` | Kept |
+| History drafts on the parallel-draft round | `hyperflare_recipes/components/parallel_draft.py`, `packed_speculation.py` | Kept |
+| Elephant-1 and DFlash2 qualification tools | `qualify/elephant1_*.py`, `qualify/dflash2_*.py`, `qualify/long_context_passkey.py` | Kept |
+| Image input for the dense Qwen recipe | | Retired: upstream `32009ad1` prepares the dense vision encoder |
+| FP8 paged prefill kernel call passes `kv_tile_ranges` | | Retired: upstream `ce095402` passes the argument |
+| Qwen preparation accepts the locked Transformers release | | Retired: upstream `069f7189` requires the locked release |
+
+Qualification on this base: the CPU suite (`pytest tests -q`) fails no test
+that it passes on upstream `07d7bb3`, apart from three cases that need an
+input a recipes-only checkout lacks and pass when it is supplied. The GPU
+tests, exports and served checks of the fork's recipes that have not run on
+this base are listed in [docs/TODO.txt](docs/TODO.txt).
+
+---
+
 > **Coding agents:** skip this README and read [AGENTS.md](AGENTS.md) directly.
 
 # Hyperflare Recipes
