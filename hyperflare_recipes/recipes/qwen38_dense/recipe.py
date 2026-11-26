@@ -55,7 +55,7 @@ def prepare(snapshot, plan, *, compile_forwards, kernel_cache, progress, retain_
         native_dense_activations=plan.native_dense_activations,
         online_mxfp8=plan.online_mxfp8,
         lock_gpu_clocks=plan.lock_gpu_clocks and plan.autotune_effort != "off",
-        max_active=plan.concurrency if selection is None else selection.max_batch, context=plan.recipe.context,
+        max_active=plan.concurrency if selection is None else selection.max_batch, context=plan.declared_context,
         image_concurrency=0 if selection is not None else plan.image_concurrency,
         rope_scaling=plan.checkpoint.rope_scaling,
         prefill_chunk_size=plan.prefill_chunk,
@@ -114,7 +114,12 @@ RECIPE = Recipe(
         image_state_row_bytes=158_149_120)}),
     # DSpark keeps draft history in ten FP8 page regions beside the target's and no ring in the state row;
     # the row holds eight verification positions. The draft loads every tensor but its confidence head.
+    # Image slots cost what they cost with the DFlash2 draft: the vision storage and a row 256 bytes larger.
+    # The draft uses the target's vocabulary head, so it prepares no draft head format.
     speculative_methods=MappingProxyType({"dspark": SpeculativeMethod(
-        ranks=MappingProxyType({1: RankCosts(166_340_864, 5_505_024, 4 << 30)}),
-        draft_bytes=3_714_705_920, draft_files=_DRAFT_FILES, max_draft_tokens=7)}),
+        ranks=MappingProxyType({1: RankCosts(166_340_864, 5_505_024, 4 << 30,
+            vision_bytes=VISION_BYTES, vision_slot_bytes=VISION_SLOT_BYTES,
+            image_state_row_bytes=166_341_120)}),
+        draft_bytes=3_714_705_920, draft_files=_DRAFT_FILES, max_draft_tokens=7,
+        draft_head_quantizations=())}),
 )

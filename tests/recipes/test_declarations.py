@@ -610,3 +610,12 @@ def test_elephant1_adapter_configures_a_text_decision_core(monkeypatch, tmp_path
     # One local GPU prepares the core; a rank group is refused before any weight loads.
     with pytest.raises(ValueError, match="one local GPU"):
         recipe.prepare(tmp_path, plan, compile_forwards=True, kernel_cache=None, progress=None, ranks=object())
+
+
+def test_every_declared_rope_scaling_extends_its_recipe_context():
+    """Planning checks a checkpoint's rope scaling; every registered declaration must pass that check."""
+    from hyperflare_recipes.recipes import recipes
+
+    for recipe in recipes():
+        for checkpoint in recipe.checkpoints:
+            recipe.check_rope_scaling(checkpoint)

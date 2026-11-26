@@ -4,7 +4,7 @@
 """Pure-PyTorch reference of the Qwen3.8-27B DSpark draft for comparison with the prepared draft.
 
 The arithmetic follows the draft repository's `dflash.py` and `dspark.py` at the revision
-`ignition/recipes/qwen38_dense/dspark_config.py` pins: target hidden states pass through `fc` and
+`hyperflare_recipes/recipes/qwen38_dense/dspark_config.py` pins: target hidden states pass through `fc` and
 `hidden_norm` and enter every layer as keys and values beside the block's own; the block is
 noncausal; rotary embedding is Hugging Face YaRN with its default attention factor; the vanilla
 Markov head adds the bias of the previously sampled token. Weights are the checkpoint's tensors

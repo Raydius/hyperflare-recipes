@@ -39,7 +39,7 @@ def projection_plan(config):
     """Prepared projection name to the checkpoint prefixes fused into it, in fusion order.
 
     A fused query/gate projection arrives as per-head pairs, so query and gate rows are separated and the gate
-    rows moved behind the query rows exactly as `ignition/recipes/qwen38_dense/weights.py` does. The GDN
+    rows moved behind the query rows exactly as `hyperflare_recipes/recipes/qwen38_dense/weights.py` does. The GDN
     query/key/value and gate inputs fuse into one projection whose output fills the adjacent Q/K/V and Z
     columns, because the NVFP4 projection writes a contiguous output. GDN B and A inputs fuse in checkpoint
     order.

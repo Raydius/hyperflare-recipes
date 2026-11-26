@@ -159,14 +159,15 @@ def test_contract_declares_the_block_end_marker(monkeypatch):
 
     from ignition.preparation import runtime_core_pb2 as p
     from hyperflare_recipes.recipes.elephant1 import contract
-    from hyperflare_recipes.recipes.qwen38_dense.contract import FRONTEND
+    from hyperflare_recipes.recipes.qwen38.contract import frontend
 
+    FRONTEND = frontend(vision=False)
     seen = {}
     monkeypatch.setattr(contract, "_prepare", lambda *args, **kwargs: seen.update(kwargs))
     contract.prepare({}, {}, None, vocabulary=7, block_end_marker=(510, 2374, 29, 271))
     assert seen["frontend"]["block_end_marker"] == [510, 2374, 29, 271]
     assert seen["frontend"]["assistant_marker"] == FRONTEND["assistant_marker"]
     # The dense Qwen contract this one extends declares no marker, and the wire message carries one.
-    assert FRONTEND["block_end_marker"] == []
+    assert "block_end_marker" not in FRONTEND
     message = json_format.ParseDict({"block_end_marker": seen["frontend"]["block_end_marker"]}, p.FrontendContract())
     assert list(message.block_end_marker) == [510, 2374, 29, 271]

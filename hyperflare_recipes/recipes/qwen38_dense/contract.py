@@ -5,9 +5,12 @@
 
 from ignition.preparation import contract as c
 from ignition.preparation import runtime_core_pb2 as p
-from hyperflare_recipes.recipes.qwen38.contract import PATCH_CAPACITIES, VISION, frontend as qwen_frontend
+from hyperflare_recipes.recipes.qwen38.contract import PATCH_CAPACITIES, VISION, frontend
 
 from .config import PAGE_TOKENS
+
+# `prepare` takes a `frontend` argument; the Qwen declaration it defaults to stays reachable by this name.
+_qwen_frontend = frontend
 
 
 def prepare(signatures, buffers, pool, *, vocabulary, image_slots=0, frontend=None):
@@ -49,4 +52,4 @@ def prepare(signatures, buffers, pool, *, vocabulary, image_slots=0, frontend=No
                  *regions],
         graphs=graphs,
         vision={**VISION, "feature_slots": image_slots} if vision else None,
-        frontend=qwen_frontend(vision=vision) if frontend is None else frontend)
+        frontend=_qwen_frontend(vision=vision) if frontend is None else frontend)

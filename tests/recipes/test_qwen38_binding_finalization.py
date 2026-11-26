@@ -291,7 +291,7 @@ def test_vision_private_producer_preserves_padded_operand_strides():
         assert torch.equal(getattr(inputs, "seed_" + name), seed)
         assert arguments[name].count_nonzero() == 0
     assert inputs.nbytes == sum(
-        value.untyped_storage().nbytes() for value in vars(inputs).values()
+        value.untyped_storage().nbytes() for value in vars(inputs).values() if value is not None
     )
 
 

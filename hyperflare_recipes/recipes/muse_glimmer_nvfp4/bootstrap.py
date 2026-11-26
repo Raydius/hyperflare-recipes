@@ -29,6 +29,7 @@ from hyperflare_recipes.components.prompt_logprobs import PreparedScoredPrefill,
 from ignition.components.sampling import AdmissionBuffers, DeviceRequestState
 from ignition.components.state_transfer import StateCommands
 from ignition.components.vision_state import PrefillVisionInputs, VisionState
+from ignition.preparation.bootstrap import BasePreparationConfig
 from ignition.preparation.capture import capture_forwards
 from ignition.preparation.checkpoint import inspect_indexed_checkpoint
 from ignition.preparation.disposable import storage_ranges
@@ -53,35 +54,18 @@ MAX_WIDTH = 16  # the DFlash2 drafter's block: 15 drafts and the pending token
 
 
 @dataclass(frozen=True)
-class PreparationConfig:
-    # One rank runs no collectives; the policy fields ride along so every recipe reads the plan alike.
-    collective_tuning: str = "static"
-    collective_ladder: dict | None = None
+class PreparationConfig(BasePreparationConfig):
+    # One rank runs no collectives; the shared policy fields ride along so every recipe reads the plan alike.
     prompt_logprobs: bool = False
-    compile_workers: int | None = None
-    native_dense_activations: bool = False
-    lock_gpu_clocks: bool = False
-    autotune_effort: str = "default"
-    tuning_replica: TuningReplica | None = None
     device: int = 0
     context: int = CONTEXT
-    prefill_chunk_size: int = 4096
-    max_active: int = 4
-    snapshot_budget_bytes: int = 4 << 30
-    headroom_bytes: int = 4 << 30
-    compile_decoder: bool = True
-    retain_graphs: bool = False
-    kernel_cache: Path | None = None
     stream_overlap: bool = True
     language_model_only: bool = True
     image_concurrency: int | None = None
     dflash: bool = False
     draft_snapshot: Path | None = None
     speculative_widths: tuple[int, ...] = tuple(range(1, MAX_WIDTH + 1))
-    speculative_fixed_width: int | None = None
-    speculative_token_capacity: int | None = None
     speculative_graph_budget: int = 64
-    mtp_only: bool = False
 
     def __post_init__(self):
         if self.mtp_only and (not self.dflash

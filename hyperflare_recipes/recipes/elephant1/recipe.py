@@ -20,15 +20,11 @@ def prepare(snapshot, plan, *, compile_forwards, kernel_cache, progress, retain_
         raise ValueError("Elephant-1 serves single-position decisions without learned speculation")
     if plan.benchmark_selection is not None:
         raise ValueError("Elephant-1 has no benchmark selection; it serves single-position decisions")
+    from ignition.preparation.bootstrap import common_preparation_kwargs
+
     config = PreparationConfig(prompt_logprobs=plan.prompt_logprobs,
-        compile_workers=plan.compile_workers, autotune_effort=plan.autotune_effort,
-        tuning_replica=plan.tuning_replica,
-        collective_tuning=plan.collective_tuning, collective_ladder=plan.collective_ladder,
-        lock_gpu_clocks=plan.lock_gpu_clocks and plan.autotune_effort != "off",
-        max_active=plan.concurrency, context=plan.context, prefill_chunk_size=plan.prefill_chunk,
-        snapshot_budget_bytes=plan.snapshots * plan.costs.state_row_bytes,
-        headroom_bytes=plan.headroom_bytes + plan.reserve_bytes, compile_decoder=compile_forwards,
-        retain_graphs=retain_graphs, kernel_cache=kernel_cache)
+        **common_preparation_kwargs(plan, compile_forwards=compile_forwards, kernel_cache=kernel_cache,
+                                    retain_graphs=retain_graphs))
     return prepare_model(snapshot, config, progress=progress, core_storage=core_storage)
 
 
