@@ -20,6 +20,7 @@ from hyperflare_recipes.components.paged_attention import PreparedPagedAttention
 from hyperflare_recipes.components.paged_batch import rotary_offset_region, rotary_positions
 from hyperflare_recipes.components.recurrent import DeltaMetadata, _commit_convolution
 from hyperflare_recipes.components.rms_norm import PreparedRMSNorm
+from hyperflare_recipes.components.rotary import interpolated_frequencies
 from hyperflare_recipes.components.head_norm_rope import qk_head_norm_rope_kv_write
 from hyperflare_recipes.components.tensor_fp8 import TensorFP8Projection, TensorFP8Weight
 from hyperflare_recipes.components.vocabulary import PreparedVocabularyProjection
@@ -516,8 +517,6 @@ class PreparedDecoder:
             inverse = 1.0 / (rotary["rope_theta"] ** (
                 torch.arange(0, dim, 2, device=source.device, dtype=torch.float32) / dim))
         else:
-            from hyperflare_recipes.components.rotary import interpolated_frequencies
-
             inverse = interpolated_frequencies(rotary["rope_theta"], dim // 2, scaling.factor,
                 scaling.original_max_position_embeddings, scaling.beta_fast, scaling.beta_slow, source.device)
         self.inverse_frequency = persistent_copy(inverse)

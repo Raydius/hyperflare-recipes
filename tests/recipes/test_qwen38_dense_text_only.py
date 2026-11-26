@@ -138,3 +138,16 @@ def test_text_only_identity_matches_the_recorded_identity():
     image = dict(RECORDED_IDENTITY_INPUTS,
         vision={"image_slots": 4, "patch_capacities": [256]})
     assert bootstrap.session_identity(**image) != identity
+
+
+def test_rope_scaling_separates_tuning_identities():
+    """A rope-scaled preparation tunes at other rotary frequencies, so its kernel plans are its own."""
+    from ignition.declaration import RopeScaling
+
+    native = bootstrap.session_identity(**RECORDED_IDENTITY_INPUTS)
+    assert bootstrap.session_identity(**RECORDED_IDENTITY_INPUTS, rope_scaling=None) == native == RECORDED_IDENTITY
+    scaled = bootstrap.session_identity(**RECORDED_IDENTITY_INPUTS, rope_scaling=RopeScaling(4., 262144))
+    other_factor = bootstrap.session_identity(**RECORDED_IDENTITY_INPUTS, rope_scaling=RopeScaling(8., 262144))
+    other_ramp = bootstrap.session_identity(**RECORDED_IDENTITY_INPUTS,
+        rope_scaling=RopeScaling(4., 262144, beta_fast=16., beta_slow=2.))
+    assert len({native, scaled, other_factor, other_ramp}) == 4

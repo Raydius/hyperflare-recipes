@@ -69,6 +69,23 @@ def test_dense_recipe_declares_the_flash_image_limits():
         assert costs.vision_slot_bytes == VISION_SLOT_BYTES
 
 
+def test_every_checkpoint_and_proposal_method_charges_the_vision_tower_once():
+    """The vision tower is charged through `vision_bytes`, so no checkpoint's `device_bytes` holds it too."""
+    from hyperflare_recipes.recipes import resolve
+    from hyperflare_recipes.recipes.qwen38_dense.recipe import RECIPE, VISION_BYTES, VISION_SLOT_BYTES
+
+    base = resolve("qwen3.8-27b").checkpoint
+    for alias in ("daisyrose-27b", "daisyrose-27b-yarn4"):
+        # DaisyRose stores the tensor names, shapes and formats of `qwen3.8-27b`.
+        checkpoint = resolve(alias).checkpoint
+        assert checkpoint.stored_bytes == base.stored_bytes
+        assert checkpoint.device_bytes == base.device_bytes
+    dspark = RECIPE.speculative_methods["dspark"].ranks[1]
+    assert (dspark.vision_bytes, dspark.vision_slot_bytes) == (VISION_BYTES, VISION_SLOT_BYTES)
+    assert dspark.image_state_row_bytes == dspark.state_row_bytes + 256
+    assert dspark.graph_bytes == RECIPE.ranks[1].graph_bytes
+
+
 def test_benchmark_selection_takes_no_image_slots():
     """A benchmark prepares text graphs only, so its configuration rejects image slots."""
     from ignition.preparation.selection import BenchmarkSelection
