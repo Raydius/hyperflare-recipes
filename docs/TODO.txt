@@ -378,8 +378,8 @@
     layouts and not replaced by `flare inspect` figures. Loading a DFlash2 core
     exported before the DSpark method was declared is also unrun.
 
-[ ] Export and serve a DaisyRose DSpark core on upstream recipes 07d7bb3 with
-    core v0.3.2. The DaisyRose aliases and the `dspark` method sit on upstream's
+[ ] Export and serve a DaisyRose DSpark core on upstream recipes 7d70e230 with
+    core c915b5f0. The DaisyRose aliases and the `dspark` method sit on upstream's
     dense image input (`max_images=4`); declaration tests on CPU check that
     `device_bytes` excludes the vision tower and that the method's costs carry
     `vision_bytes`. No dense Qwen core with the `dspark` method, with or without
@@ -414,7 +414,8 @@
     CPU, and a read of the source finds every attribute the decoder, batch and
     pool code read; no test builds the decoder with Elephant-1's configuration,
     and no Elephant-1 preparation has run against the decoder of upstream
-    recipes 07d7bb3.
+    recipes 7d70e230, whose dense decoder fuses query and key normalization,
+    rotation and the cache write.
 
 [ ] Test the dense Qwen DSpark and rope-scaling paths that no test reaches. No
     test continues a request from a cached prefix or a resumed request and
@@ -457,10 +458,10 @@
 
 [ ] Lock a FlashInfer revision whose Gated DeltaNet prefill and decode operators
     accept two value heads per key head. `uv.lock` names `Raydius/flashinfer`
-    d73da5c4, which requires three, so Elephant-1 preparation fails in an
+    675984cd, which requires three, so Elephant-1 preparation fails in an
     environment synchronized from the lock alone. The preparation image applies
     `flashinfer-gdn-head-ratio.patch` to the installed package; the patch
-    applies to d73da5c4 without offset. The patched operators have not run at
+    applies to 675984cd without offset. The patched operators have not run at
     Elephant-1's geometry (16 key heads, 32 value heads) on that revision.
     Remove this entry when the locked revision contains the change.
 
@@ -526,8 +527,8 @@
     those kernels into retention reclaim, which other kernels of this repository
     do not get.
 
-[ ] Run the fork's GPU and checkpoint tests on upstream recipes 07d7bb3 with
-    core v0.3.2. In a CPU run of `pytest tests -q`, 22 cases of fork-added test
+[ ] Run the fork's GPU and checkpoint tests on upstream recipes 7d70e230 with
+    core c915b5f0. In a CPU run of `pytest tests -q`, 22 cases of fork-added test
     files skip: Muse Glimmer 11 (`tests/recipes/muse_glimmer_nvfp4/` attention,
     configuration, DFlash2, draft weights, reference and vision;
     `tests/frontend/test_muse_glimmer.py`), Elephant-1 block attention 1
@@ -554,3 +555,13 @@
     `tests/frontend/prepare_templates.py`, which knows those recipes; with
     templates fetched by upstream core they fail. The `muse_spark` case fails
     wherever the gated Muse Spark model repository cannot be read.
+
+[ ] Prepare MiMo V2 with speculation, or correct its bootstrap.
+    `hyperflare_recipes/recipes/mimo_v2/bootstrap.py` passes `buffers=` to
+    `PreparedParallelDraftRound`, whose constructor in
+    `hyperflare_recipes/components/parallel_draft.py` declares no such
+    parameter, so building a speculative round would raise `TypeError`. The
+    call is upstream's and is the same at upstream 7d70e230; the fork does not
+    change it. This is a reading of the source: no MiMo V2 preparation has run
+    here. Remove this entry when a MiMo V2 core with speculation exports, or
+    when upstream changes the call.
