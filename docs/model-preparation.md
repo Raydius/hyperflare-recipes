@@ -447,7 +447,7 @@ the target vocabulary head retains BF16 precision. For example:
 .venv/bin/ignition bench qwen3.8-27b-qad --online-mxfp8 --draft-head-quantization nvfp4 --gpus 0
 ```
 
-Use `--mtp-draft-tokens N` to select zero through fifteen prepared draft tokens.
+With DFlash2, use `--mtp-draft-tokens N` to select zero through fifteen prepared draft tokens.
 Width-one rounds retain draft context so adaptive verification can resume wider
 rounds. The proposal block, GDN correction records, and convolution rollback
 storage derive from the configured maximum verification width. Packed target
@@ -468,9 +468,69 @@ testing unqualified QAD image preparation):
   --online-mxfp8 --draft-head-quantization mxfp8
 ```
 
-The recipe context capacity is 262144 tokens.
+The recipe context capacity is 262144 tokens; `daisyrose-27b-yarn4` and
+`--rope-parameters` extend it by declared rope scaling.
 `--no-mtp` skips the draft download and omits its weights and state during preparation;
 `flare run CORE --mtp-draft-tokens 0` selects the core's ordinary graphs.
+
+`daisyrose-27b` selects the pinned `RadixArk/DaisyRose-27B-NVFP4` checkpoint at
+revision `c4d85c5d`, a fine-tune stored with the tensor names, shapes and
+formats of `nvidia/Qwen3.8-27B-NVFP4`. Every checkpoint of the recipe prepares
+with either proposal method or with `--no-mtp`.
+
+`daisyrose-27b-yarn4` is the same checkpoint with a 1,048,576-token context:
+frequency-only rope interpolation by four over the trained 262,144 tokens, the
+declaration `qwen3.8-flash-yarn4` uses. `--rope-parameters` selects the same
+scaling for a checkpoint folder of this recipe. Only the target's rotary
+frequencies are interpolated; draft frequencies are unchanged with either
+proposal method.
+
+`--speculative-method dspark` prepares the pinned BF16
+`RadixArk/Qwen3.8-27B-DSpark` draft (revision `b9a5dbdf`) in place of DFlash2;
+`--draft-model FOLDER` reads `config.json` and `model.safetensors` from a folder
+instead of downloading them. The draft has five noncausal layers over the same
+five target layers and the target's embedding and vocabulary head. Its
+proposal block holds the pending token and six mask tokens, so it prepares
+zero through seven draft tokens and verification widths up to eight. It
+attends every accepted position of the request: each draft layer keeps FP8
+E4M3 keys and values in page regions beside the target's, addressed by the
+same page table, which raises the page cost from 4,194,304 to 5,505,024 bytes
+per 128 tokens and leaves no draft ring in the continuation row (166,340,864
+bytes per row at width eight). Rotary embedding is YaRN with factor 32 over
+8,192 positions and the attention factor `0.1 * ln(32) + 1`. A rank-256 Markov
+transition biases each proposal from the previously sampled token. The
+confidence head is not executed, so adaptive and fixed-width verification both
+prepare. `--draft-head-quantization`, `--draft-body-quantization` and
+`ignition bench --speculation-study` are refused with DSpark, and
+`--online-mxfp8` converts the target only.
+
+```sh
+.venv/bin/ignition export daisyrose-27b --gpus 0 --max-concurrency 8 \
+  --speculative-method dspark --mtp-draft-tokens 7 --no-mtp-adaptive-verification
+flare-cli/target/release/flare run CORE
+```
+
+DSpark qualification: the draft's context writer and proposal block run as
+captured CUDA graphs on an RTX 5060 Ti (SM120) with fabricated two-layer
+weights, where draft history is byte-identical for one prefill and chunked
+prefill, a round that accepts three of eight positions stores those three
+only, and logits agree with the eager reference
+`hyperflare_recipes/reference/qwen38_dense_dspark.py` within BF16 rounding. One core
+is exported and served on an RTX PRO 6000 (SM120): the DaisyRose checkpoint
+folder with DSpark, seven drafts at fixed width eight, 16 sequences and the
+1,048,576-token rope-scaled context. It loads 24.56 GiB and allocates 69.3
+GiB of cache holding 1,665,024 KV tokens. Over its first 619 served rounds,
+mixed chat traffic, 3.29 drafts were accepted per round; acceptance by draft
+position was 80%, 67%, 55%, 45%, 34%, 27% and 22%. A passkey probe
+(`qualify/long_context_passkey.py`) retrieved the key at depths 0.25 and 0.75
+of prompts of 199,962, 319,795 and 1,009,836 tokens; the 1,009,836-token
+prompts took 506 and 520 seconds. Throughput at fixed concurrency, target
+quality past 262,144 tokens beyond passkey retrieval, and draft acceptance
+on long outputs past that length are not measured;
+[the core fork's follow-up list](https://github.com/Raydius/flare-local-inference/blob/deploy/docs/TODO.md)
+names the unrun checks. The draft's model card reports mean accepted lengths
+of 3.3 to 4.1 tokens on code workloads at seven draft tokens under SGLang, a
+different runtime and hardware.
 
 For complete GPU graph round latency without core export, use:
 
@@ -499,10 +559,6 @@ context assimilation is included by default; add `--no-mtp` for target-only
 prefill. This mode prepares no decode or speculative round graphs.
 
 ## Qwen3.8 Flash
-
-Enable hybrid history drafting at serving startup with
-`flare run CORE --history-drafts`; disable it with `--no-history-drafts`.
-These options use the core's existing MTP graphs and are not export settings.
 
 Export Qwen with up to five MTP draft tokens per round:
 
@@ -585,6 +641,44 @@ row cache across local GPUs;
 The graph publishes GPU-produced lookup IDs before layer
 0 and waits for row delivery at the layer-1 consumer. Disk and RAM delivery
 use the same prepared model graphs; the flag selects table storage only.
+
+### Qwen3.8 Flash DFlash2
+
+`ignition export MODEL --speculative-method dflash2` prepares a Qwen3.8-Flash-Next
+target with the `incoai/Qwen3.8-Flash-Next-DFlash2` block draft in place of the
+checkpoint's MTP module, through the `qwen38` recipe. `MODEL` is an alias
+(`qwen3.8-flash`), a repository id, or a checkpoint directory; without the
+flag, or a `[defaults] speculative_method = "dflash2"` setting, the same
+`MODEL` prepares MTP proposals. The draft is downloaded at its pinned revision
+`a22a1744` into the Hugging Face hub cache (or `[paths].hub_cache`);
+`--draft-model DIR` loads a folder holding `config.json` and
+`model.safetensors` instead and downloads nothing.
+
+```sh
+.venv/bin/ignition export qwen3.8-flash --speculative-method dflash2 --mtp-draft-tokens 7 --gpus 0
+```
+
+The recipe captures five draft tokens per round by default and up to seven
+with `--mtp-draft-tokens 7`; a package serves at most the draft count it
+captured. The DFlash2 method rejects `--mixed-prefill`, and its packages
+declare no history-draft copy inputs.
+
+`--rope-parameters '{"rope_type":"yarn","factor":4.0,"original_max_position_embeddings":262144}'`
+prepares a 1,048,576-token serving context through frequency-only rope
+interpolation of factor 4 anchored at the native 262,144 tokens, as the
+`qwen3.8-flash-yarn4` alias declares. The scaling applies to the target's rotary
+tables; the draft's rotary and its 2048-position rings take positions past
+262,144 unscaled. Serve the package with `--max-context-tokens 1048576`.
+`python -m qualify.dflash2_long_context --image IMAGE --package PACKAGE --publisher-keys KEYS --trust-store STORE --output DIR`
+probes a scaled package with one retrieval prompt past the native context and
+one below it, history copies off, and records the draft's accepted tokens per
+round in both buckets against a 10 % criterion.
+`python -m qualify.dflash2_draft_sweep --workload WORKLOAD --image IMAGE --package PACKAGE --catalog CATALOG --publisher-keys KEYS --trust-store STORE --output DIR`
+serves one package once per draft count, fixed 0 through 7
+(`--mtp-draft-tokens N --no-mtp-adaptive-verification`) plus the adaptive
+controller, at concurrency 1 and 8 on the frozen speculation workload, and
+tabulates code_edit tokens per second, accepted drafts per round, and
+acceptance rate per count; history copies stay off unless `--history-drafts`.
 
 ## GLM 5.3 Flash
 
@@ -1870,6 +1964,215 @@ top-p 0.95, and top-k 64.
 .venv/bin/ignition export gemma-4-12b --gpus 0
 ```
 
+## Muse Glimmer 30B
+
+The `muse-glimmer-30b-nvfp4` alias selects
+[`original-el8/Muse-Glimmer-30B-NVFP4`](https://huggingface.co/original-el8/Muse-Glimmer-30B-NVFP4)
+at revision `b47e1e9f77d9a86e18cda5e318c68c632a7fbe59`. The recipe is
+`muse_glimmer_nvfp4`; the name states the checkpoint's uniform NVFP4 (W4A4)
+design, as distinct from the mixed-precision `nvidia/Muse-Glimmer-30B-NVFP4`
+recipe upstream. Preparation uses one
+SM120 GPU, the checkpoint's NVFP4 text projections (q/k/v fused, the attention
+gate as its own projection, mlp gate/up fused; the ModelOpt `config_groups`
+metadata selects them and the `model-inputscales.safetensors` shard is read
+through the checkpoint index), FP8 E4M3 KV storage, a 1,048,576-token declared context (native 131,072; no
+rope scaling — the sliding layers are bounded at 2048 and the full layers carry
+no positional encoding; `--max-context-tokens` serves a smaller window),
+eight concurrent requests by default and up to sixteen with
+`--max-concurrency 16` (a lone request may reach the full 1,048,576 tokens;
+with every admitted request active each is guaranteed the pages the GPU holds ÷
+concurrency × 128 tokens, reported by the export's `Allocate cache` line), and
+4096-token prefill chunks. The 52 layers alternate
+39 sliding-window layers (2048 tokens, rope 500000) with 13 full-context layers
+without positional encoding; the sigmoid attention gate multiplies the raw
+attended value, the four per-layer norms are centered RMS norms, and the head
+applies `output_multiplier` then 20·tanh(x/20) softcapping. The vision tower is
+prepared by default: up to four 32 MiB images per request through the
+`muse_glimmer` image profile (Glimmer's `smart_resize` grid at factor 28 under
+4096 merged tokens, antialiased Lanczos resampling, window-ordered patches in
+32×32-patch cells, four-tap bilinear position-table interpolation), 37 window and
+13 full vision layers, a 2×2 pixel shuffle, and the adapter and projection,
+injected at `<|patch|>` positions between `<|image_start|>` and `<|image_end|>`.
+Video parts (`<|video|>`) are rejected; `--language-model-only` prepares text alone.
+
+DFlash drafting uses
+[`z-lab/Muse-Glimmer-30B-DFlash2`](https://huggingface.co/z-lab/Muse-Glimmer-30B-DFlash2)
+at revision `b54ffdd11fa9cfe2af370012e5763d492c904128`. Preparation downloads
+its configuration and weights into the configured Hugging Face hub cache. The
+five-layer BF16 DFlash2 draft, fine-tuned from the first-party drafter, runs
+sixteen-token blocks with fifteen proposed tokens: context projected from target
+layers 1, 13, 25, 37, and 49 through `fc` and `hidden_norm`, 2048-token sliding
+attention, mask token 201818, two-tap grouped convolutions (kernel 2, group 16)
+before each attention and MLP, a rank-256 top-16 candidate selector, and the
+target's output multiplier and softcap applied to the draft head. Target and
+draft histories use unit-scale FP8 E4M3 storage. The default packed catalog holds
+64 speculative rounds across batches one, two, four, and eight (one through
+sixteen at `--max-concurrency 16`) with up to 128 packed target rows; `--mtp-draft-tokens N` selects zero through fifteen proposals, and
+`--no-mtp` skips the draft download, weights, state, and speculative graphs.
+
+Draft weights occupy 5,544,328,424 bytes. Each continuation row occupies
+62,914,560 bytes with draft history or 41,943,040 bytes with `--no-mtp`; each
+128-token paged KV block occupies 851,968 bytes. The export inventory on an RTX
+PRO 6000 reports 28,885.60 MiB of resident weights (text, vision tower, and
+drafter) and 4,617,488,302 bytes of graph scratch, capture pool, vision arena,
+owned tensors, and graph I/O, which the recipe declares as its rank-one costs.
+
+Sampling defaults carry over from Muse Spark, since the model card recommends
+none: temperature 1.0, top-p 1.0, and top-k disabled. The chat template's
+`reasoning_strength`, `knowledge_cutoff`, and `current_date` keep their template
+defaults and are set through `chat_template_kwargs`.
+
+Ignition applies `hyperflare_recipes/recipes/muse_glimmer_nvfp4/assets/chat_template.patch.json`
+to the downloaded checkpoint template; the frontend otherwise matches Muse
+Spark's recipient headers, ATEM tools, and end markers.
+
+```sh
+.venv/bin/ignition export muse-glimmer-30b-nvfp4 --gpus 0 --prompt-logprobs
+.venv/bin/ignition convert CACHE_ENTRY --form packed --output /data/flare-runtime/muse-glimmer-tp1.safetensors
+flare/target/release/flare run /data/flare-runtime/muse-glimmer-tp1.safetensors --gpus 0
+# against the console-served instance (no container of its own); --image/--package/--publisher-keys/--trust-store serve one instead
+.venv/bin/python -m qualify.long_context_passkey --base-url http://127.0.0.1:8100 --output qualify/results/glimmer-passkey --model-id Muse-Glimmer-30B \
+    --lengths 100000,200000,320000,520000,1000000 --tokens-per-record 56.54 \
+    --template-kwargs '{"reasoning_strength": "low"}' --max-tokens 256 --timeout 1800
+```
+
+## Elephant-1
+
+The `elephant-1-9b` alias selects
+[`baselabs/elephant-1`](https://huggingface.co/baselabs/elephant-1) at revision
+`b3f8a93462fb1051a9de031e94a7ff380e254072`, a Qwen3.5-9B fine-tune that answers
+a question by one prefill: the prompt ends at an answer line and the option
+probabilities are the next-token distribution over the option letters. The
+recipe is `elephant1`. It prepares the language model only: 24 Gated DeltaNet
+layers (16 key and 32 value heads) and 8 full-attention layers with a sigmoid
+output gate, 64 of 256 head dimensions rotated at theta 1e7. The checkpoint's
+333 `model.visual.*` tensors are skipped, and a request with an image part is
+refused with `prepared model does not support image inputs`.
+
+The checkpoint is BF16. Preparation packs the attention, MLP and Gated DeltaNet
+projections to NVFP4 with BF16 activations (W4A16, group-16 block scales, one
+gain per tensor from its largest magnitude) and keeps the embedding, vocabulary
+head, normalization weights, Gated DeltaNet convolution and per-head scalars in
+BF16. KV pages are BF16 and the recurrent state is FP32. A checkpoint that
+declares its own `quantization_config` is rejected.
+
+The recipe declares the trained 16,384-token context, 128-token pages, two
+concurrent requests, a prefill chunk of the whole context and no
+speculation. A prompt longer than the context is rejected, not truncated.
+Sampling defaults are temperature 1.0, top-p 1.0 and top-k 1, since the model
+card gives none and a decision read samples nothing.
+
+The checkpoint's full-attention layers were trained with a block mask: a token
+attends to every token of its own block and of every earlier block, where the
+blocks are the shared prefix (system turn and state) and the question. The core
+declares the tokens of `</state>` and the blank line after it as its block-end
+marker. A prompt holding the marker once is served with that mask, each block
+in one prefill submission; a prompt without it is served causally; a prompt
+holding it more than once is refused with `prompt holds the block-end marker
+more than once`. The Gated DeltaNet layers are causal. The end of the prefix
+block is a prefix-cache checkpoint, so further questions about one state
+prefill only their question. Prompt logprobs are null inside a block. An answer
+longer than one token decodes causally after the question block, which the
+model was not trained for. Only Helios applies the mask: `ignition debug-serve
+--direct` uploads no block distances, so that diagnostic path runs every prompt
+causally, without an error.
+
+Preparation needs FlashInfer Gated DeltaNet prefill and decode operators that
+accept two value heads per key head. The FlashInfer revision pinned in
+`pyproject.toml` accepts only three;
+[the core fork's `docs/TODO.md`](https://github.com/Raydius/flare-local-inference/blob/deploy/docs/TODO.md)
+tracks the pin.
+
+```sh
+.venv/bin/ignition export elephant-1-9b --gpus 0 --max-concurrency 4
+flare-cli/target/release/flare run CACHE_ENTRY --gpus 0 \
+  --memory-limit 0.88 --kv-cache-limit concurrency
+```
+
+A caller renders the prompt with the vendor rules (OneJev `qev.prompt` and the
+checkpoint's chat template with `enable_thinking` false) and reads the answer
+through Completions: `max_tokens: 1`, `logprobs: 20`, and `logprob_token_ids`
+naming the option letters' tokens. Normalizing the returned letter
+probabilities gives the option distribution. The twenty most likely tokens are
+not a sufficient readout, because the model is trained on the letters' relative
+logits: on the probe set below the vendor runtime places a mean 0.61 of the
+next-token probability on the letters, and the core's twenty most likely tokens
+held every letter for 132 of the 157 questions with at most 20 options.
+
+Core `gb202-tp1-202611171634` was exported on an RTX PRO 6000 Blackwell (GB202)
+at concurrency 2. Served with the flags above on an RTX 5060 Ti with 16 GB,
+beside about 1.7 GB of desktop use, the `flare` process held 10,428 MiB after
+answering the probe set below; the causal
+core with 2,048-token prefill chunks held 9,608 MiB. Core
+`gb202-tp1-202611200624`, exported the same way at concurrency 4, held
+11,596 MiB (12.16 GB) on that card, inside the 12.5 GB the recipe targets: its
+KV cache holds four 16,384-token contexts (2.3 GiB, 65,536 tokens), and four
+concurrent questions of about 9,030 tokens each returned every option letter's
+logprob in 12.8 to 14.8 s, their prefills running one at a time. The probe set
+below was scored on the concurrency-2 core. On that card a 16,301-token
+prompt prefilled in 6.3 s from an empty prefix cache, a 12,045-token one in
+4.6 s and a 4,086-token one in 1.5 s, and a second question over a cached
+16,236-token prefix answered in 0.07 s
+(`qualify/results/elephant1-decision-parity/prefill-latency.json`, one request
+at a time). `flare inspect` was not run on this core. That card is in no Flare
+hardware platform list, so this is a measurement of a GB202 core, not a
+qualified platform.
+
+`qualify/elephant1_decision_parity.py` compares decision probabilities with the
+vendor runtime (OneJev `81ce62f` with the checkpoint's `serve.patch`) on 160
+rendered questions: 30 states with five yes/no, choice and score questions
+each, a 20-option and a 26-option choice, service logs up to 16,301 prompt
+tokens, and two over-length prompts. The vendor runtime takes the two blocks
+from its rendering; the core takes them from the prompt's tokens, and the two
+agree on all 160 prompts. The results are in
+`qualify/results/elephant1-decision-parity/`:
+
+| Comparison | Questions | Argmax agreement | Mean abs. probability delta | Maximum | Score rank agreement |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| BF16 checkpoint under the served mask against the vendor runtime | 159 | 1.000 | 0.000 | 0.000 | 1.000 |
+| Served core against the BF16 checkpoint under the served mask | 158 | 0.956 | 0.021 | 0.298 | 0.889 |
+
+The mask comparison passes its bounds of 0.99 argmax agreement and 0.02 mean
+delta. It runs the vendor's own Transformers model with the core's block rule,
+so it shows the rule places the blocks where the vendor does, not that the
+prepared kernels execute them exactly. The packed core fails its 0.01 mean-delta
+bound, as the causal core did (0.968 and 0.017 against a causal BF16 forward):
+the core does not reproduce the vendor runtime's probabilities and is not
+qualified as equivalent to it. Against the vendor runtime the served core moved
+from 0.924 argmax agreement and a 0.037 mean delta, with every layer causal, to
+0.956 and 0.021. No BF16 core exists to separate the NVFP4 projections from the
+prepared attention in that remainder; the captured attention layer matches FP32
+attention under the block mask in `tests/recipes/test_elephant1_attention.py`.
+
+Scored in both orders on a freshly started core, the 68 questions that ran once
+from an empty prefix cache and once from the cached prefix block returned
+identical probabilities, as did all 158 answered questions. Each of 70 prompts
+that extend a prompt just served by its most likely letter resumed at the end
+of the prefix block, not inside its question block, and a prompt holding the
+marker twice was refused (`prefix-cache.json`). The core refused both
+over-length prompts; the vendor engine, whose own limit is 32,768 tokens per
+question, answered the 17,135-token one.
+
+`qualify/results/elephant1-mask-feasibility/masks.json` holds the ablation that
+set the design: against the trained mask, a causal forward agrees on 0.906 of
+argmax answers with a 0.032 mean delta, a bidirectional question block alone on
+0.943 with 0.021, and a bidirectional prefix block alone on 0.931 with 0.023.
+
+The reference side needs the vendor environment from the checkpoint's
+`setup.sh` and a GPU that holds the 18.8 GB BF16 checkpoint:
+
+```sh
+python -m qualify.elephant1_decision_parity reference --checkpoint CHECKPOINT --output reference.json
+python -m qualify.elephant1_decision_parity core --probes reference.json \
+  --url http://127.0.0.1:8000 --output core.json
+python -m qualify.elephant1_decision_parity report --reference reference.json --core core.json \
+  --output qualify/results/elephant1-decision-parity
+```
+
+`core --reverse` scores the probe set in reverse order; run on a freshly started
+core, its file is the `--recached` input of `report` for the prefix-cache
+comparison.
+
 ## Storage and graph capacities
 
 Gemma 4 and Muse Spark default to four concurrent requests. Gemma 4's speculative
@@ -2003,6 +2306,14 @@ retain their prepared layouts. Continuation rows and KV pages occupy separate
 fixed virtual ranges with declared maximum extents. Helios backs those ranges
 according to selected concurrency, verification width, and available GPU memory;
 reducing execution state leaves more physical memory for KV pages.
+
+History drafting is a serving-time option, never an export setting:
+`flare run CORE --history-drafts` enables it and `--no-history-drafts`
+disables it. It copies continuations from the serving process's decoded history
+into a core's existing speculative graphs as point-mass proposals. Cores
+whose speculative graphs bind the copy inputs support it: Qwen3.8 Flash (its
+MTP round), MiMo V2.6 Pro, and Nemotron 3.5 Bolt (the shared parallel-draft
+round). Other recipes' cores reject the flag at load.
 
 The selected GPU count must match the core, and each GPU must match its
 rank's architecture and memory requirements. Flare serves all ranks in one
