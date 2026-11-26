@@ -358,3 +358,199 @@
     on single-host SM120 PCIe has been exported and served. Close when each
     supported configuration exports and passes native serving validation or
     remains explicitly rejected by planning.
+
+[ ] Compare the prepared Qwen3.8-27B DSpark draft with the eager reference on
+    the pinned draft weights.
+    `tests/reference/test_qwen38_dense_dspark.py::test_prepared_draft_matches_the_reference_on_the_pinned_weights`
+    is unrun: it needs an SM120 GPU with about 12 GiB free,
+    `FLARE_QWEN38_DSPARK_SNAPSHOT` naming `RadixArk/Qwen3.8-27B-DSpark` at
+    `b9a5dbdf`, and `FLARE_QWEN38_DENSE_SNAPSHOT` naming a dense Qwen checkpoint
+    that stores `lm_head.weight` in BF16, such as `qwen3.8-27b-qad`. The same
+    comparison passes on fabricated weights (two layers, hidden size 512) on an
+    RTX 5060 Ti.
+
+[ ] Measure the served dense Qwen DSpark core at fixed concurrency. The exported
+    DaisyRose core (16 sequences, 1,048,576-token context) has no code-edit
+    throughput or acceptance trials at concurrency 1 and 8
+    (`qualify/dflash2_console_probe.py`, one fresh start per trial). The DSpark
+    state-row, page and draft bytes and the `daisyrose-27b` checkpoint bytes in
+    `hyperflare_recipes/recipes/qwen38_dense/recipe.py` are computed from the
+    layouts and not replaced by `flare inspect` figures. Loading a DFlash2 core
+    exported before the DSpark method was declared is also unrun.
+
+[ ] Export and serve a DaisyRose DSpark core on upstream recipes 07d7bb3 with
+    core v0.3.2. The DaisyRose aliases and the `dspark` method sit on upstream's
+    dense image input (`max_images=4`); declaration tests on CPU check that
+    `device_bytes` excludes the vision tower and that the method's costs carry
+    `vision_bytes`. No dense Qwen core with the `dspark` method, with or without
+    image input, has been exported or served on this base. Remove this entry
+    when one has been exported, loaded by Helios, and has answered a text and an
+    image request.
+
+[ ] Qualify the rope-scaled dense Qwen core past 262,144 tokens beyond passkey
+    retrieval. The served DaisyRose core retrieves a passkey from 319,795- and
+    1,009,836-token prompts; no task-quality measurement exists at those
+    lengths. The DSpark draft attends the whole request with unscaled rotary
+    frequencies whose YaRN configuration covers 262,144 positions; its
+    acceptance past that length is known only from the probe's short replies
+    (1.9 to 3.2 accepted drafts per round), not from long outputs.
+
+[ ] Decide whether to execute the Qwen3.8-27B DSpark confidence head. The head
+    is validated for shape and not loaded; prefix selection uses completed
+    acceptance on the host.
+
+[ ] Run a complete DSpark round for the dense Qwen recipe below the export. The
+    CUDA tests in `tests/recipes/test_qwen38_dense_dspark_cuda.py` capture the
+    draft's context writer and proposal block and supply the accepted counts a
+    round would produce; no test runs `PreparedParallelDraftRound` with the
+    target decoder, sampling, verification and commit on fabricated weights.
+
+[ ] Build the dense Qwen decoder with Elephant-1's configuration on a GPU.
+    Elephant-1 builds
+    `hyperflare_recipes.recipes.qwen38_dense.decoder.PreparedDecoder` with its
+    own configuration, weights and pool, which declare no rope scaling, vision
+    encoder or rotary offset region.
+    `tests/preparation/test_weight_declarations.py` covers the weight roots on
+    CPU, and a read of the source finds every attribute the decoder, batch and
+    pool code read; no test builds the decoder with Elephant-1's configuration,
+    and no Elephant-1 preparation has run against the decoder of upstream
+    recipes 07d7bb3.
+
+[ ] Test the dense Qwen DSpark and rope-scaling paths that no test reaches. No
+    test continues a request from a cached prefix or a resumed request and
+    compares its draft pages. For rope scaling, no test reaches the refusal of
+    scaling that does not extend the checkpoint's declared context in
+    `hyperflare_recipes/recipes/qwen38_dense/weights.py` or the frequency
+    selection in `hyperflare_recipes/recipes/qwen38_dense/decoder.py`, which
+    needs a GPU:
+    `test_scaled_target_frequencies_interpolate_only_the_slow_pairs` calls
+    `hyperflare_recipes.components.rotary.interpolated_frequencies` directly.
+    The served DaisyRose core exercises prefix reuse and the scaled decoder
+    without asserting on them.
+
+[ ] Decide what Elephant-1 does for an answer longer than one token. Decode
+    after the question block is causal. A request readmitted after preemption
+    takes its generated tokens into the question block, and ends with an error
+    when they repeat the block-end marker; no test drives a preempted marker
+    prompt through the worker. The model was trained for a one-token read, which
+    none of this touches. See the Elephant-1 section of
+    docs/model-preparation.md.
+
+[ ] Reduce the Elephant-1 core's NVFP4 deviation. The served core differs from
+    the BF16 forward under the served mask by a 0.021 mean probability delta
+    against a 0.01 bound (0.956 argmax agreement), and that comparison does not
+    separate packed-weight rounding from the prepared kernels or from the BF16
+    logits: in
+    `qualify/results/elephant1-decision-parity/stage-b-precision.json` every
+    difference between two option log-probabilities on the core side is a
+    multiple of 1/32, and the reference head is FP32. Measure which packed
+    projections carry the error, and the share of the logit precision, before
+    changing `packed_plan` in `hyperflare_recipes/recipes/elephant1/config.py`.
+
+[ ] Run `flare inspect` on Elephant-1 cores `gb202-tp1-202611171634` and
+    `gb202-tp1-202611200624` and state their fixed device allocations in the
+    Elephant-1 section of docs/model-preparation.md. Core
+    `gb202-tp1-202611171634` was exported with `pack_body_nvfp4` storing only
+    the swizzled block scales and with the 16,384-token prefill chunk, so its
+    serving process's 10,428 MiB does not isolate the 432,406,528 bytes of
+    row-major scales the earlier core `gb202-tp1-202611161942` held.
+
+[ ] Lock a FlashInfer revision whose Gated DeltaNet prefill and decode operators
+    accept two value heads per key head. `uv.lock` names `Raydius/flashinfer`
+    d73da5c4, which requires three, so Elephant-1 preparation fails in an
+    environment synchronized from the lock alone. The preparation image applies
+    `flashinfer-gdn-head-ratio.patch` to the installed package; the patch
+    applies to d73da5c4 without offset. The patched operators have not run at
+    Elephant-1's geometry (16 key heads, 32 value heads) on that revision.
+    Remove this entry when the locked revision contains the change.
+
+[ ] Run the GPU checks of the shared changes the Elephant-1 recipe made to
+    `hyperflare_recipes/components/weights.py`, `linear.py` and
+    `gated_delta.py`: `tests/components/test_vocabulary_cuda.py` (needs assigned
+    tensor-parallel devices) and
+    `tests/recipes/test_qwen38_exact_checkpoints.py` (needs
+    `FLARE_QWEN38_SNAPSHOT`).
+
+[ ] Fold Muse Glimmer's attention back onto Muse Spark's.
+    `hyperflare_recipes/recipes/muse_glimmer_nvfp4/attention.py` takes packed
+    metadata per forward and returns local values, which `PreparedGeneration`
+    and `PreparedParallelDraftRound` require;
+    `hyperflare_recipes/recipes/muse_spark/attention.py` binds its metadata and
+    scratch at construction. Remove the Glimmer module when Spark's attention
+    accepts per-forward metadata, by importing it with Glimmer's separate gate
+    projection and unnormalized gate input.
+
+[ ] qwen38's `_identity` (`hyperflare_recipes/recipes/qwen38/bootstrap.py`)
+    records the DFlash2 draft as the pinned repository and revision plus the
+    draft's `config.json` text, also when `--draft-model` supplied a folder. Two
+    cores prepared from draft folders with the same configuration and different
+    weights share an identity, and Helios seeds prefix-cache digests from it.
+    Hashing the draft's shard headers into the identity re-keys every existing
+    DFlash2 core of this recipe.
+
+[ ] Declare the history-draft copy inputs on the remaining recipes that use the
+    shared parallel-draft round. `nemotron_h` and `mimo_v2` declare them.
+    `deepseek4`, `kimi3`, `minimax_m3` and `muse_spark` construct
+    `PreparedParallelDraftRound` in their `bootstrap.py` without them; each
+    needs a served qualification before its core admits `--history-drafts`.
+    `deepseek41` and `inkling2` sample with vocabulary-parallel sampling, where
+    the round refuses copy inputs at construction.
+
+[ ] Test the refusal of history-copy inputs under vocabulary-parallel sampling.
+    `PreparedParallelDraftRound` raises "history copies and vocabulary-parallel
+    sampling are exclusive" at construction, which keeps a substituted copy away
+    from a verification that reads draft tile masses. The constructor needs a
+    GPU and no test reaches the refusal.
+
+[ ] Check whether packed-prefix confidence is recorded from the learned token at
+    positions a history copy later replaces.
+    `hyperflare_recipes/components/packed_speculation.py` applies the confidence
+    head of `hyperflare_recipes/components/split_draft.py` to the draft
+    proposal; if that proposal precedes `substitute_copies`, prefix allocation
+    is biased for copies. Remove this entry when a test fixes the order or the
+    confidence of a copied position.
+
+[ ] Qualify qwen3.8-flash-yarn4 long-context serving: measure the extended
+    score-workspace chunking and graph bytes, and validate image requests and
+    speculation past the native 262,144-token context against native-quality
+    baselines. Passkey retrieval is measured (`qualify/long_context_passkey.py`,
+    results in `qualify/results/yarn4-passkey/`): the `qwen3.8-flash-yarn4` MTP
+    core and the DFlash2 yarn4 core each pass 12 of 12 cells (200k, 320k, 520k
+    and 1,000k prompt tokens at needle depths 0.1, 0.5 and 0.9), and the native
+    262k MTP core passes its 3 of 3 cells at 200k.
+
+[ ] Retire the manual `_NATIVE_JITS` registrations in
+    `hyperflare_recipes/components/moe_sm103.py` and
+    `hyperflare_recipes/components/sm103_projection.py` now that FlashInfer's
+    planning eviction covers every JIT module (`_PLANNED_TRITON_JITS`); they opt
+    those kernels into retention reclaim, which other kernels of this repository
+    do not get.
+
+[ ] Run the fork's GPU and checkpoint tests on upstream recipes 07d7bb3 with
+    core v0.3.2. In a CPU run of `pytest tests -q`, 22 cases of fork-added test
+    files skip: Muse Glimmer 11 (`tests/recipes/muse_glimmer_nvfp4/` attention,
+    configuration, DFlash2, draft weights, reference and vision;
+    `tests/frontend/test_muse_glimmer.py`), Elephant-1 block attention 1
+    (`tests/recipes/test_elephant1_attention.py`), NVFP4 body packing 1
+    (`tests/components/test_nvfp4_body.py`), dense Qwen DSpark 6
+    (`tests/recipes/test_qwen38_dense_dspark_config.py`,
+    `test_qwen38_dense_dspark_cuda.py`,
+    `tests/reference/test_qwen38_dense_dspark.py`) and the Qwen3.8 DFlash2
+    reference 3 (`tests/reference/test_qwen38_dflash2.py`). The whole CPU run
+    skips 2,870 tests. None of the tools in `qualify/` that the fork adds
+    (`elephant1_*.py`, `dflash2_*.py`, `long_context_passkey.py`) has run on
+    this base; each needs a served core or a GPU.
+
+[ ] Make `tests/components/test_history_drafts.py` collectable in this
+    repository alone. It imports `tests.components.completion_support`, which
+    exists only in the core repository, so the module errors at collection here;
+    its 7 tests pass when core's file is placed beside it. Upstream test modules
+    that import the same support module fail collection for the same reason.
+
+[ ] Supply chat templates for the fork recipes' template-patch tests.
+    `tests/preparation/test_template_patches.py` reads
+    `FLARE_TEST_TEMPLATE_DIR`, and the `elephant1` and `muse_glimmer_nvfp4`
+    cases pass only with templates fetched by the core fork's
+    `tests/frontend/prepare_templates.py`, which knows those recipes; with
+    templates fetched by upstream core they fail. The `muse_spark` case fails
+    wherever the gated Muse Spark model repository cannot be read.

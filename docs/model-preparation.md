@@ -527,8 +527,7 @@ of prompts of 199,962, 319,795 and 1,009,836 tokens; the 1,009,836-token
 prompts took 506 and 520 seconds. Throughput at fixed concurrency, target
 quality past 262,144 tokens beyond passkey retrieval, and draft acceptance
 on long outputs past that length are not measured;
-[the core fork's follow-up list](https://github.com/Raydius/flare-local-inference/blob/deploy/docs/TODO.md)
-names the unrun checks. The draft's model card reports mean accepted lengths
+[the follow-up list](TODO.txt) names the unrun checks. The draft's model card reports mean accepted lengths
 of 3.3 to 4.1 tokens on code workloads at seven draft tokens under SGLang, a
 different runtime and hardware.
 
@@ -2078,10 +2077,9 @@ model was not trained for. Only Helios applies the mask: `ignition debug-serve
 causally, without an error.
 
 Preparation needs FlashInfer Gated DeltaNet prefill and decode operators that
-accept two value heads per key head. The FlashInfer revision pinned in
-`pyproject.toml` accepts only three;
-[the core fork's `docs/TODO.md`](https://github.com/Raydius/flare-local-inference/blob/deploy/docs/TODO.md)
-tracks the pin.
+accept two value heads per key head. The FlashInfer revision named in
+`pyproject.toml` accepts only three; [the follow-up list](TODO.txt) tracks the
+revision.
 
 ```sh
 .venv/bin/ignition export elephant-1-9b --gpus 0 --max-concurrency 4
