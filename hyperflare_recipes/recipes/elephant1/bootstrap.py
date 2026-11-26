@@ -107,8 +107,7 @@ def prepare(snapshot, config, *, progress=None, core_storage):
             "contract": "elephant-1.graph-inputs.v2", "full_attention": "block_bidirectional"},
             sort_keys=True).encode()).hexdigest()
         session = RecordedPreparationSession(
-            compile_workers=config.compile_workers, collective_tuning=config.collective_tuning,
-            collective_ladder=config.collective_ladder, autotune_effort=config.autotune_effort,
+            compile_workers=config.compile_workers, autotune_effort=config.autotune_effort,
             tuning_replica=config.tuning_replica, lock_gpu_clocks=config.lock_gpu_clocks,
             device=device, checkpoint=identity,
             workload_schema="elephant-1", numerical_policy="default", coordinator=coordinator,

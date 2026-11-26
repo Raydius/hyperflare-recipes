@@ -86,7 +86,6 @@ def test_recipe_prepare_runs_in_process_on_one_gpu(monkeypatch, tmp_path):
         PreparationConfig=lambda **options: SimpleNamespace(**options),
         prepare=lambda snapshot, config, **options: captured.update(config=config, **options) or config))
     plan = SimpleNamespace(world_size=1, speculation=None, prompt_logprobs=False, compile_workers=None,
-        collective_tuning="static", collective_ladder=None,
         autotune_effort="off", tuning_replica=None, native_dense_activations=False, lock_gpu_clocks=True,
         context=131072, declared_context=131072, concurrency=4, prefill_chunk=4096, snapshots=2,
         costs=SimpleNamespace(state_row_bytes=1 << 20),
@@ -97,7 +96,6 @@ def test_recipe_prepare_runs_in_process_on_one_gpu(monkeypatch, tmp_path):
                             core_storage=storage)
     assert captured["core_storage"] is storage
     assert config.device == 0 and config.dflash is False and config.language_model_only is False
-    assert config.collective_tuning == "static" and config.collective_ladder is None
     assert config.image_concurrency == 2 and config.snapshot_budget_bytes == 2 << 20 and config.headroom_bytes == 2 << 30
     assert not config.lock_gpu_clocks and captured["progress"] is None
     with pytest.raises(ValueError, match="exactly one GPU"):

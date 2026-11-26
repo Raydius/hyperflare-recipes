@@ -163,7 +163,6 @@ def prepare(snapshot, config, *, progress=None, core_storage):
             draft_headers=draft_headers, kv_dtype="float8_e4m3fn",
             contract="muse-glimmer-nvfp4.text.v1"), sort_keys=True).encode()).hexdigest()
         session = RecordedPreparationSession(compile_workers=config.compile_workers,
-            collective_tuning=config.collective_tuning, collective_ladder=config.collective_ladder,
             autotune_effort=config.autotune_effort, tuning_replica=config.tuning_replica,
             native_dense_activations=config.native_dense_activations, lock_gpu_clocks=config.lock_gpu_clocks,
             device=device, checkpoint=identity, workload_schema="muse_glimmer_nvfp4", numerical_policy="default",
