@@ -379,3 +379,24 @@ def test_daisyrose_yarn4_extends_the_dense_qwen_context_by_rope_scaling():
     assert base.checkpoint.context is None and base.checkpoint.rope_scaling is None
     scaled = rope_scaled(base, {"rope_type": "yarn", "factor": 4.0, "original_max_position_embeddings": 262144})
     assert (scaled.context, scaled.rope_scaling) == (1_048_576, RopeScaling(4., 262144))
+
+
+@pytest.mark.parametrize("alias", ["qwen3.8-flash-yarn4", "daisyrose-27b-yarn4"])
+def test_a_rope_scaled_alias_is_reproduced_at_its_declared_context(alias):
+    """An alias that declares rope scaling shares its repository and revision with the unscaled alias."""
+    from ignition import planning
+    from ignition.cli import _parser
+    from ignition.cli.preparation import rope_scaled
+    from ignition.preparation.rebuild_manifest import reproduction_arguments
+    from tests.cli.test_planning import gpu
+
+    model = resolve(alias)
+    plan = planning.plan(model.recipe, model.checkpoint, (gpu(0, 95),), selected=None, concurrency=1,
+                         reserve_bytes=0, speculation=None)
+    assert plan.declared_context == 1_048_576
+    arguments = reproduction_arguments(model, plan, compiled_forwards=True)
+    parsed = _parser().parse_args(arguments[1:])
+    target = resolve(parsed.model)
+    assert target.recipe is model.recipe and target.checkpoint.rope_scaling is None
+    scaled = rope_scaled(target, parsed.rope_parameters)
+    assert (scaled.context, scaled.rope_scaling) == (1_048_576, model.checkpoint.rope_scaling)
