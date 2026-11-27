@@ -6,7 +6,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
+import json
 from pathlib import Path
 from types import MappingProxyType
 
@@ -38,7 +39,7 @@ from hyperflare_recipes.parameters import (
     OnlineMXFP8Parameters,
     StreamOverlapParameters,
 )
-from .checkpoint_schema import ARCHITECTURE, MODEL_ID, REVISION
+from .checkpoint_schema import ARCHITECTURE, MODEL_ID, REVISION, TEXT_GEOMETRY
 from .draft_config import WEIGHT_BYTES
 
 # Twelve target sparse-attention layers each store one page; learned drafts add the draft layer's.
@@ -87,6 +88,9 @@ class Qwen38Parameters(RecipeParameters):
 
     def validate(self, context: ParameterContext) -> None:
         super().validate(context)
+        if (context.checkpoint is not None and context.checkpoint.context is not None
+                and any(gpu.capability == (10, 3) for gpu in context.gpus)):
+            raise UsageError("a rope-scaled context is not measured on SM103")
         if self.force_moe_decode_a16:
             if any(gpu.capability not in ((12, 0), (12, 1)) for gpu in context.gpus):
                 raise UsageError("--force-moe-decode-a16 requires SM120/121 packed NVFP4 experts")
@@ -144,6 +148,22 @@ def prepare(snapshot, plan, *, compile_forwards, kernel_cache, progress, retain_
                          ranks=ranks, checkpoint=plan.checkpoint)
 
 
+def inspect_replacement(metadata, replacement):
+    """Serve the context the checkpoint directory's own rotary configuration declares."""
+    from .checkpoint import CheckpointError, serving_context
+
+    text = json.loads((metadata / "config.json").read_text()).get("text_config")
+    if not isinstance(text, dict) or "rope_parameters" not in text:
+        return None  # Preparation validates the whole configuration.
+    try:
+        context = serving_context(text)
+    except CheckpointError as error:
+        raise UsageError(str(error)) from error
+    if context == TEXT_GEOMETRY["max_position_embeddings"]:
+        return None
+    return replace(replacement, context=context, rope_parameters=MappingProxyType(dict(text["rope_parameters"])))
+
+
 def usage(prepared):
     report = prepared.memory_report
     return tuple(RankUsage(rank["pages"], rank["free_device_bytes"]) for rank in report.get("ranks", (report,)))
@@ -154,6 +174,7 @@ RECIPE = Recipe(
     served_model_name="Qwen3.8-Flash-Next",
     prepare=prepare,
     usage=usage,
+    inspect_replacement=inspect_replacement,
     # Thinking defaults; bounds span thinking/instruct presets: https://huggingface.co/Qwen/Qwen3.8-Flash-Next#best-practices.
     sampling_defaults=SamplingDefaults(
         temperature=1., top_p=.95, top_k=20,
