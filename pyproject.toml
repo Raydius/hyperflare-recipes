@@ -28,7 +28,7 @@ explicit = true
 [tool.uv.sources]
 torch = { index = "pytorch-cu132" }
 torchvision = { index = "pytorch-cu132" }
-ignition = { git = "https://github.com/Raydius/flare-local-inference.git", rev = "5ade4ab0c28ea262be46f3be83fded3e400f1c5d" }
+ignition = { git = "https://github.com/Raydius/flare-local-inference.git", rev = "86029f80c39b5411de38720774b0fa18b3702173" }
 flashinfer-python = { git = "https://github.com/Raydius/flashinfer.git", rev = "675984cda42c2e8dbd62d9117cb131c2e232ea59" }
 
 [tool.setuptools.packages.find]

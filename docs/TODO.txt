@@ -405,17 +405,18 @@
     round would produce; no test runs `PreparedParallelDraftRound` with the
     target decoder, sampling, verification and commit on fabricated weights.
 
-[ ] Build the dense Qwen decoder with Elephant-1's configuration on a GPU.
+[ ] Test the dense Qwen decoder with Elephant-1's configuration.
     Elephant-1 builds
     `hyperflare_recipes.recipes.qwen38_dense.decoder.PreparedDecoder` with its
     own configuration, weights and pool, which declare no rope scaling, vision
-    encoder or rotary offset region.
-    `tests/preparation/test_weight_declarations.py` covers the weight roots on
-    CPU, and a read of the source finds every attribute the decoder, batch and
-    pool code read; no test builds the decoder with Elephant-1's configuration,
-    and no Elephant-1 preparation has run against the decoder of upstream
-    recipes 7d70e230, whose dense decoder fuses query and key normalization,
-    rotation and the cache write.
+    encoder or rotary offset region. An Elephant-1 core exported at concurrency
+    4 on upstream recipes 7d70e230, whose dense decoder fuses query and key
+    normalization, rotation and the cache write, returned finite option
+    log-probabilities for 158 rendered decision probes and picked the same
+    option as a core served before that decoder change on each. No test builds
+    the decoder with Elephant-1's configuration, and
+    `qualify/elephant1_decision_parity.py` has not compared a core of this base
+    with the vendor runtime.
 
 [ ] Test the dense Qwen DSpark and rope-scaling paths that no test reaches. No
     test continues a request from a cached prefix or a resumed request and
@@ -461,8 +462,9 @@
     675984cd, which requires three, so Elephant-1 preparation fails in an
     environment synchronized from the lock alone. The preparation image applies
     `flashinfer-gdn-head-ratio.patch` to the installed package; the patch
-    applies to 675984cd without offset. The patched operators have not run at
-    Elephant-1's geometry (16 key heads, 32 value heads) on that revision.
+    applies to 675984cd without offset. On that revision the patched operators
+    ran at Elephant-1's geometry (16 key heads, 32 value heads) in one export
+    and its served decision probes.
     Remove this entry when the locked revision contains the change.
 
 [ ] Run the GPU checks of the shared changes the Elephant-1 recipe made to

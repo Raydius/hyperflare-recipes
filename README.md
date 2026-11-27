@@ -47,9 +47,13 @@ an adapted patch was also fitted to an upstream mechanism on this base.
 
 Qualification on this base: the CPU suite (`pytest tests -q`) fails no test
 that it passes on upstream `7d70e230`, apart from three cases that need an
-input a recipes-only checkout lacks and pass when it is supplied. The GPU
-tests, exports and served checks of the fork's recipes that have not run on
-this base are listed in [docs/TODO.txt](docs/TODO.txt).
+input a recipes-only checkout lacks and pass when it is supplied. Three cores
+were exported and served on this base on one RTX PRO 6000: Flash Next with
+factor-4 rope scaling and the DFlash2 draft at 8 sequences, Muse Glimmer with
+its DFlash2 drafter at 16 sequences, and Elephant-1 at concurrency 4; each
+answered its served checks. The GPU tests, the DSpark export and the
+measurements that have not run on this base are listed in
+[docs/TODO.txt](docs/TODO.txt).
 
 ---
 
