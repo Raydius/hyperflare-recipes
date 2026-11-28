@@ -1,0 +1,187 @@
+{
+  "pairs": [
+    {
+      "task": "passkey",
+      "length": 200000,
+      "depth": 0.1,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "87822",
+      "scaled_reply": "87822",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 200000,
+      "depth": 0.5,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "33385",
+      "scaled_reply": "33385",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 200000,
+      "depth": 0.9,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "15752",
+      "scaled_reply": "15752",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 64000,
+      "depth": 0.1,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "13670",
+      "scaled_reply": "13670",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 64000,
+      "depth": 0.5,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "75801",
+      "scaled_reply": "75801",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 64000,
+      "depth": 0.9,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "82705",
+      "scaled_reply": "82705",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 8000,
+      "depth": 0.1,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "87265",
+      "scaled_reply": "87265",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 8000,
+      "depth": 0.5,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "54338",
+      "scaled_reply": "54338",
+      "replies_identical": true
+    },
+    {
+      "task": "passkey",
+      "length": 8000,
+      "depth": 0.9,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "52354",
+      "scaled_reply": "52354",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 200000,
+      "depth": 0.1,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "87822",
+      "scaled_reply": "87822",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 200000,
+      "depth": 0.5,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "33385",
+      "scaled_reply": "33385",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 200000,
+      "depth": 0.9,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "15752",
+      "scaled_reply": "15752",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 64000,
+      "depth": 0.1,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "13670",
+      "scaled_reply": "13670",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 64000,
+      "depth": 0.5,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "75801",
+      "scaled_reply": "75801",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 64000,
+      "depth": 0.9,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "82705",
+      "scaled_reply": "82705",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 8000,
+      "depth": 0.1,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "87265",
+      "scaled_reply": "87265",
+      "replies_identical": true
+    },
+    {
+      "task": "tracking",
+      "length": 8000,
+      "depth": 0.5,
+      "native_passed": false,
+      "scaled_passed": true,
+      "native_reply": "The value of VAR HWRYV is derived through the following chain of assignments:\n\n1.  **VAR TISXB** is defined as `54",
+      "scaled_reply": "54338",
+      "replies_identical": false
+    },
+    {
+      "task": "tracking",
+      "length": 8000,
+      "depth": 0.9,
+      "native_passed": true,
+      "scaled_passed": true,
+      "native_reply": "52354",
+      "scaled_reply": "52354",
+      "replies_identical": true
+    }
+  ],
+  "native_passed": 17,
+  "scaled_passed": 18,
+  "replies_identical": 17
+}

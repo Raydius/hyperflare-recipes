@@ -1,0 +1,123 @@
+{
+ "measured_on": {
+  "core_head": "86029f80 (fork deploy)",
+  "recipes_head": "87c08409 (fork deploy)",
+  "image": "local/flare-ignition:86029f80-87c08409",
+  "package": "ckpt/gb202-tp1-202611280643",
+  "profile": "2026-11-27 Flare v0.3.2-r2 YaRN attention factor",
+  "checkpoint": "huginnfork/Qwen3.8-Flash-Next-NVFP4-MXFP8-CSF-QAD-Abliterated@v3, --rope-parameters factor 4.0, DFlash2 drafter",
+  "served_context": 1048576,
+  "gpu": "RTX PRO 6000 Blackwell (SM120)"
+ },
+ "cells": [
+  {
+   "case": "passkey-15008-0.1",
+   "task": "passkey",
+   "length": 1000000,
+   "depth": 0.1,
+   "passkey": "74100",
+   "prompt_tokens": 1009836,
+   "generated_tokens": 6,
+   "reply": "74100",
+   "passed": true,
+   "finish_reason": "stop",
+   "completed": true,
+   "client_error": null,
+   "request_seconds": 120.812189886,
+   "accepted_per_round": 0.08278233271621264
+  },
+  {
+   "case": "passkey-15008-0.5",
+   "task": "passkey",
+   "length": 1000000,
+   "depth": 0.5,
+   "passkey": "99362",
+   "prompt_tokens": 1009836,
+   "generated_tokens": 6,
+   "reply": "99362",
+   "passed": true,
+   "finish_reason": "stop",
+   "completed": true,
+   "client_error": null,
+   "request_seconds": 137.651388701,
+   "accepted_per_round": 0.28129475794901176
+  },
+  {
+   "case": "passkey-15008-0.9",
+   "task": "passkey",
+   "length": 1000000,
+   "depth": 0.9,
+   "passkey": "44101",
+   "prompt_tokens": 1009836,
+   "generated_tokens": 6,
+   "reply": "44101",
+   "passed": true,
+   "finish_reason": "stop",
+   "completed": true,
+   "client_error": null,
+   "request_seconds": 133.137009458,
+   "accepted_per_round": 0.9015263417035942
+  },
+  {
+   "case": "passkey-3002-0.1",
+   "task": "passkey",
+   "length": 200000,
+   "depth": 0.1,
+   "passkey": "87822",
+   "prompt_tokens": 199962,
+   "generated_tokens": 6,
+   "reply": "87822",
+   "passed": true,
+   "finish_reason": "stop",
+   "completed": true,
+   "client_error": null,
+   "request_seconds": 20.918534818,
+   "accepted_per_round": 3.2131147540983607
+  },
+  {
+   "case": "passkey-3002-0.5",
+   "task": "passkey",
+   "length": 200000,
+   "depth": 0.5,
+   "passkey": "33385",
+   "prompt_tokens": 199962,
+   "generated_tokens": 6,
+   "reply": "33385",
+   "passed": true,
+   "finish_reason": "stop",
+   "completed": true,
+   "client_error": null,
+   "request_seconds": 28.893191152,
+   "accepted_per_round": 2.4044734389561975
+  },
+  {
+   "case": "passkey-3002-0.9",
+   "task": "passkey",
+   "length": 200000,
+   "depth": 0.9,
+   "passkey": "15752",
+   "prompt_tokens": 199962,
+   "generated_tokens": 6,
+   "reply": "15752",
+   "passed": true,
+   "finish_reason": "stop",
+   "completed": true,
+   "client_error": null,
+   "request_seconds": 42.48316555,
+   "accepted_per_round": 3.4214786832164057
+  }
+ ],
+ "grid": {
+  "1000000": {
+   "0.1": true,
+   "0.5": true,
+   "0.9": true
+  },
+  "200000": {
+   "0.1": true,
+   "0.5": true,
+   "0.9": true
+  }
+ },
+ "all_passed": true
+}
