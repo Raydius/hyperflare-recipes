@@ -10,6 +10,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from functools import partial
 
+import math
+
 import torch
 from b12x.attention import paged_kv_write, qsa
 from b12x.preparation import PreparationSession, PreparedCall
@@ -67,6 +69,11 @@ class RotaryTables:
         sin = persistent_empty(frequency.shape, dtype=torch.float32, device=device)
         torch.cos(frequency, out=cos)
         torch.sin(frequency, out=sin)
+        if scaling is not None:
+            # YaRN's attention factor multiplies both tables, as the reference rotary embedding applies it.
+            factor = 0.1 * math.log(scaling.factor) + 1.0
+            cos.mul_(factor)
+            sin.mul_(factor)
         return cls(cos, sin, axes, scaling)
 
     def gather(self, positions: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
